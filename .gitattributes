@@ -1,0 +1,23 @@
+# see https://stackoverflow.com/a/10855862/84693
+
+# auto detect text files and perform LF normalization
+*             text=auto
+
+*.cs          text diff=csharp
+*.csproj      text
+*.sln         text
+*.DotSettings text
+*.yml         text
+*.cmd         text
+*.sh          text
+*.md          text
+*.json        text
+*.config      text
+*.props       text
+*.targets     text
+
+# explicitly use LF for frontend sources
+*.js          text eol=lf
+*.ts          text eol=lf
+*.tsx         text eol=lf
+*.less        text eol=lf

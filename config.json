@@ -1,0 +1,20 @@
+{
+  "CassandraEndPoints": [
+    {
+      "IpAddress": "{EndPointIp1}",
+      "Port": 9042
+    },
+    {
+      "IpAddress": "{EndPointIp2}",
+      "Port": 9042
+    }
+  ],
+  "MessageSpaceName": "FTPMessageSpace",
+  "DropFilesTable": false,
+  "DropFilesContentTable": false,
+  "DropDirectoriesTable": false,
+  "ConnectionAttemptsCount": 5,
+  "ReconnectTimeout": 5000,
+  "DefaultTTL": 0,
+  "DefaultDataBufferSize": 2048
+}

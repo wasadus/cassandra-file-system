@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "CassandraFS": {
+      "commandName": "Project",
+      "commandLineArgs": "/mountPoint /redirectPoint"
+    }
+  }
+}
