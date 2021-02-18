@@ -1,6 +1,6 @@
 # CassandraFS
 
-#### Proof-of-concept связки ФТП-сервера и файловой системы, пищущей напрямую в Кассандру. WIP.
+#### Proof-of-concept for FTP-server based on file system, writing directly to Cassandra. WIP.
 
 ## Сборка и запуск
 
