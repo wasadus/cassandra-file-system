@@ -1,11 +1,11 @@
 {
   "CassandraEndPoints": [
     {
-      "IpAddress": "{EndPointIp1}",
+      "IpAddress": "{ip_endpoint_1}",
       "Port": 9042
     },
     {
-      "IpAddress": "{EndPointIp2}",
+      "IpAddress": "{ip_endpoint_2}",
       "Port": 9042
     }
   ],

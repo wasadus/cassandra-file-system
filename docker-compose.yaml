@@ -2,6 +2,8 @@ version: '3.3'
 
 services:
     cassandra:
+        logging:
+            driver: none
         restart: always
         hostname: my-cassandra
         image: cassandra
@@ -20,6 +22,15 @@ services:
             - cassandra
         build: .
         privileged: true
-        command: dotnet CassandraFS/CassandraFS/bin/Debug/netcoreapp3.1/CassandraFS.dll mountPoint/ 
+        command: dotnet CassandraFS/CassandraFS/bin/Debug/netcoreapp3.1/CassandraFS.dll /home/myusername
         ports:
             - 5000:80
+    # proftpd:
+    #    image: kibatic/proftpd
+    #    network_mode: "host"
+    #    restart: unless-stopped
+    #    environment:
+    #      FTP_LIST: "myusername:mypassword"
+        #  USERADD_OPTIONS: "-o --gid 33 --uid 33"
+     #   volumes:
+     #     - "/the_direcotry_on_the_host:/home/jazzmutant/Work/CassandraFS/mountPoint/"

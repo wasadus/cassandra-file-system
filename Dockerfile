@@ -9,6 +9,23 @@ FROM microsoft/aspnetcore-build:2.0 AS build
 WORKDIR /src
 WORKDIR /app
 
+
+#RUN apt-get update -qq && \
+#	apt-get install -y proftpd && \
+#	apt-get clean && \
+#    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+#RUN sed -i "s/# DefaultRoot/DefaultRoot/" /etc/proftpd/proftpd.conf
+
+#EXPOSE 20 21
+
+# ADD docker-entrypoint.sh /usr/local/sbin/docker-entrypoint.sh
+# ENTRYPOINT ["/usr/local/sbin/docker-entrypoint.sh"]
+
+#CMD ["proftpd", "--nodaemon"]
+
+
+
 RUN apt-get update
 RUN apt-get install apt-transport-https -y
 RUN apt-get update
@@ -29,7 +46,17 @@ RUN apt-get install -y libfuse-dev
 RUN apt-get install libgtk2.0-dev -y
 RUN apt-get install libglib2.0-dev -y
 
+RUN apt-get -y install sudo
+RUN useradd -m userftp && echo "userftp:pass" | chpasswd && adduser userftp sudo
+
+#USER docker
+
 
 ADD . .
 RUN chmod +x build-libs.sh
 RUN sh build-libs.sh
+
+#EXPOSE 20
+#EXPOSE 21
+
+

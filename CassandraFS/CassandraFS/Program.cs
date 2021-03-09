@@ -49,7 +49,7 @@ namespace CassandraFS
             logger.Info("Configuring cassandra");
             var config = container.Get<Config>();
             var session = ConnectToCassandra(config, logger);
-            container.Configurator.ForAbstraction<Session>().UseInstances(session);
+            container.Configurator.ForAbstraction<ISession>().UseInstances(session);
 
             session.CreateKeyspaceIfNotExists(config.MessageSpaceName);
 
