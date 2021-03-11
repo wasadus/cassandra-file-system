@@ -28,4 +28,5 @@ ADD . .
 RUN chmod +x build-libs.sh
 RUN chmod +x run-fuse.sh
 RUN sh build-libs.sh
+COPY pure-ftpd.conf /etc/pure-ftpd/pure-ftpd.conf
 CMD ./run-fuse.sh

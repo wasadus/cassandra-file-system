@@ -22,4 +22,5 @@ services:
           FTP_USER_NAME: user
           FTP_USER_PASS: pass
           FTP_USER_HOME: /home/cassandra-fs
+          ADDED_FLAGS: -d -d
         restart: always
