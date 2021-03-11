@@ -49,7 +49,7 @@ namespace CassandraFS
             logger.Info("Configuring cassandra");
             var config = container.Get<Config>();
             var session = ConnectToCassandra(config, logger);
-            container.Configurator.ForAbstraction<Session>().UseInstances(session);
+            container.Configurator.ForAbstraction<ISession>().UseInstances(session);
 
             session.CreateKeyspaceIfNotExists(config.MessageSpaceName);
 
@@ -99,11 +99,14 @@ namespace CassandraFS
 
         private static Session ConnectToCassandra(Config config, ILog logger)
         {
-            logger.Info("Connecting to cassandra");
-            var cluster = Cluster.Builder()
-                                 .AddContactPoints(
-                                     config.CassandraEndPoints.Select(x => new IPEndPoint(IPAddress.Parse(x.IpAddress), x.Port)))
-                                 .Build();
+            logger.Info($"Connecting to cassandra: {string.Join(", ", config.CassandraEndPoints.Select(x => x.Host))}");
+            var endpoints = config
+                            .CassandraEndPoints
+                            .SelectMany(x => Dns.GetHostAddresses(x.Host))
+                            .Select(x => new IPEndPoint(x, 9042))
+                            .ToArray();
+            logger.Info($"Cassandra endpoints: {string.Join(", ", endpoints.Select(x => x.ToString()))}");
+            var cluster = Cluster.Builder().AddContactPoints(endpoints).Build();
             for (var i = 0; i <= config.ConnectionAttemptsCount; i++)
             {
                 try

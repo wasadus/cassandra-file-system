@@ -1,12 +1,7 @@
 {
   "CassandraEndPoints": [
     {
-      "IpAddress": "{EndPointIp1}",
-      "Port": 9042
-    },
-    {
-      "IpAddress": "{EndPointIp2}",
-      "Port": 9042
+      "Host": "cassandra"
     }
   ],
   "MessageSpaceName": "FTPMessageSpace",

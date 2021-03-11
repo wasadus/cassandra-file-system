@@ -17,7 +17,6 @@ namespace CassandraFS
 
     public class NodeSettings
     {
-        public string IpAddress { get; set; }
-        public int Port { get; set; }
+        public string Host { get; set; }
     }
 }

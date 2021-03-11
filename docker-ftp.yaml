@@ -1,0 +1,14 @@
+version: '3.3'
+
+services:
+    proftpd:
+        image: kibatic/proftpd
+#        network_mode: "host"
+       # restart: unless-stopped
+        privileged: true
+        container_name: ftp
+        environment:
+            FTP_LIST: "userftp:pass"
+        #  USERADD_OPTIONS: "-o --gid 33 --uid 33"
+        volumes:
+            - /home/jazzmutant/Work/CassandraFS/mountPoint:/home
