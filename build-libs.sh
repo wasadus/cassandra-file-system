@@ -27,5 +27,5 @@ init_configuration
 echo "configuration: $CONFIGURATION"
 
 echo "building fs..."
-# build_fs
+build_fs
 echo "building ok"
