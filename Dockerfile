@@ -1,4 +1,4 @@
-FROM stilliard/pure-ftpd:latest
+FROM kibatic/proftpd:latest
 
 WORKDIR /app
 
@@ -28,5 +28,5 @@ ADD . .
 RUN chmod +x build-libs.sh
 RUN chmod +x run-fuse.sh
 RUN sh build-libs.sh
-COPY pure-ftpd.conf /etc/pure-ftpd/pure-ftpd.conf
+COPY proftpd.conf /etc/proftpd/proftpd.conf
 CMD ./run-fuse.sh

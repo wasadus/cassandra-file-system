@@ -9,5 +9,7 @@ run_fuse() {
 }
 
 mkdir /home/cassandra-fs
+
 run_fuse &
-/run.sh -l puredb:/etc/pure-ftpd/pureftpd.pdb -E -j -R -P $PUBLICHOST
+proftpd --nodaemon
+# /run.sh -l puredb:/etc/pure-ftpd/pureftpd.pdb -E -j -R -P $PUBLICHOST

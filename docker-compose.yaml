@@ -18,9 +18,5 @@ services:
           - "21:21"
           - "30000-30009:30000-30009"
         environment:
-          PUBLICHOST: "localhost"
-          FTP_USER_NAME: user
-          FTP_USER_PASS: pass
-          FTP_USER_HOME: /home/cassandra-fs
-          ADDED_FLAGS: -d -d
+          FTP_LIST: "cassandra-fs:pass"
         restart: always
