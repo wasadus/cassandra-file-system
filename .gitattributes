@@ -16,8 +16,9 @@
 *.props       text
 *.targets     text
 
-# explicitly use LF for frontend sources
+
 *.js          text eol=lf
 *.ts          text eol=lf
 *.tsx         text eol=lf
 *.less        text eol=lf
+*.sh          text eol=lf
