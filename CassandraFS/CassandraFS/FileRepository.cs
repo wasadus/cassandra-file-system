@@ -6,6 +6,7 @@ using Cassandra;
 using Cassandra.Data.Linq;
 
 using Mono.Fuse.NETStandard;
+using Mono.Unix.Native;
 
 namespace CassandraFS
 {
@@ -28,13 +29,29 @@ namespace CassandraFS
             filesTableEvent
                 .Where(entry => entry.Path.Equals(path))
                 .Execute()
-                .Select(file => new DirectoryEntry(file.Name));
+                .Select(file => new DirectoryEntry(file.Name) { Stat = GetShortFileStat(file) });
 
         public bool IsFilesExists(string directoryPath) =>
             filesTableEvent
                 .Where(f => f.Path == directoryPath)
                 .Execute()
                 .Any();
+
+        public Stat GetFileStat(FileModel file) => new Stat()
+        {
+            st_nlink = 1,
+            st_mode = file.FilePermissions,
+            st_size = file.Data?.LongLength ?? 0,
+            st_blocks = file.Data?.LongLength / 512 ?? 0,
+            st_blksize = file.Data?.LongLength ?? 0, // Optimal size for buffer in I/O operations
+            st_atim = DateTimeOffset.Now.ToTimespec(), // access
+            st_mtim = file.ModifiedTimestamp.ToTimespec(), // modified
+            st_gid = file.GID,
+            st_uid = file.UID,
+        };
+
+        public void WriteFile(FileModel file)
+           => filesTableEvent.Insert(GetCQLFile(file)).SetTTL(TTL).Execute();
 
         public FileModel ReadFile(string path)
         {
@@ -43,49 +60,7 @@ namespace CassandraFS
             var file = filesTableEvent
                        .FirstOrDefault(f => f.Path.Equals(parentDirPath) && f.Name.Equals(fileName))
                        .Execute();
-            if (file == null)
-            {
-                return null;
-            }
-
-            if (!file.ContentGuid.Equals(Guid.Empty))
-            {
-                file.Data = filesContentTableEvent
-                            .FirstOrDefault(f => f.GUID.Equals(file.ContentGuid))
-                            .Execute().Data;
-            }
-
-            return new FileModel
-                {
-                    Path = file.Path, Name = file.Name, Data = file.Data, ModifiedTimestamp = file.ModifiedTimestamp,
-                    ExtendedAttributes =
-                        FileExtendedAttributesHandler.DeserializeExtendedAttributes(file.ExtendedAttributes)
-                };
-        }
-
-        public void WriteFile(FileModel file)
-        {
-            var cqlFile = new CQLFile
-                {
-                    Path = file.Path,
-                    Name = file.Name,
-                    ExtendedAttributes = FileExtendedAttributesHandler.SerializeExtendedAttributes(file.ExtendedAttributes),
-                    ModifiedTimestamp = file.ModifiedTimestamp,
-                    ContentGuid = Guid.Empty
-                };
-            if (file.Data.Length > dataBufferSize)
-            {
-                var guid = Guid.NewGuid();
-                cqlFile.ContentGuid = guid;
-                var cqlFileContent = new CQLFileContent {GUID = guid, Data = file.Data};
-                filesContentTableEvent.Insert(cqlFileContent).SetTTL(TTL).Execute();
-            }
-            else
-            {
-                cqlFile.Data = file.Data;
-            }
-
-            filesTableEvent.Insert(cqlFile).SetTTL(TTL).Execute();
+            return file == null ? null : GetFileModel(file);
         }
 
         public void DeleteFile(string path)
@@ -117,6 +92,75 @@ namespace CassandraFS
                        .Execute();
             var result = file.Any();
             return result;
+        }
+
+        // Если файл большой, то не будет осуществляться запрос к второй таблице и размер будет 0
+        private Stat GetShortFileStat(CQLFile file) => new Stat()
+        {
+            st_nlink = 1,
+            st_mode = file.FilePermissions,
+            st_size = file.Data?.LongLength ?? 0,
+            st_blocks = file.Data?.LongLength / 512 ?? 0,
+            st_blksize = file.Data?.LongLength ?? 0, // Optimal size for buffer in I/O operations
+            st_atim = DateTimeOffset.Now.ToTimespec(), // access
+            st_mtim = file.ModifiedTimestamp.ToTimespec(), // modified
+            st_gid = file.GID,
+            st_uid = file.UID,
+        };
+
+        private FileModel GetFileModel(CQLFile file)
+        {
+            if (!file.ContentGuid.Equals(Guid.Empty))
+            {
+                file.Data = filesContentTableEvent
+                            .FirstOrDefault(f => f.GUID.Equals(file.ContentGuid))
+                            .Execute().Data;
+            }
+
+            return new FileModel
+            {
+                Path = file.Path,
+                Name = file.Name,
+                Data = file.Data,
+                ModifiedTimestamp = file.ModifiedTimestamp,
+                ExtendedAttributes =
+                        FileExtendedAttributesHandler.DeserializeExtendedAttributes(file.ExtendedAttributes),
+                FilePermissions = file.FilePermissions,
+                GID = file.GID,
+                UID = file.UID,
+                ContentGUID = file.ContentGuid
+            };
+        }
+
+        private CQLFile GetCQLFile(FileModel file)
+        {
+            var cqlFile = new CQLFile
+            {
+                Path = file.Path,
+                Name = file.Name,
+                ExtendedAttributes = FileExtendedAttributesHandler.SerializeExtendedAttributes(file.ExtendedAttributes),
+                ModifiedTimestamp = file.ModifiedTimestamp,
+                ContentGuid = Guid.Empty,
+                FilePermissions = file.FilePermissions,
+                GID = file.GID,
+                UID = file.UID
+            };
+            if (file.Data.Length > dataBufferSize)
+            {
+                var guid = file.ContentGUID.Equals(Guid.Empty) ? Guid.NewGuid() : file.ContentGUID;
+                cqlFile.ContentGuid = guid;
+                var cqlFileContent = new CQLFileContent { GUID = guid, Data = file.Data };
+                filesContentTableEvent.Insert(cqlFileContent).SetTTL(TTL).Execute();
+            }
+            else
+            { 
+                filesContentTableEvent
+                    .Where(fileContent => fileContent.GUID.Equals(file.ContentGUID))
+                    .Delete()
+                    .Execute();
+                cqlFile.Data = file.Data;
+            }
+            return cqlFile;
         }
     }
 }

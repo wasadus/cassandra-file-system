@@ -52,9 +52,17 @@ namespace CassandraFS
         protected override Errno OnAccessPath(string path, AccessModes mask)
         {
             logger.Info($"OnAccessPath({path}, {mask})...");
-            var error = OnGetPathStatus(path, out _);
-            logger.Info($"OnAccessPath({path}, {mask}) -> {error}");
-            return error;
+            try
+            {
+                var error = fileSystemRepository.TryGetAccessToPath(path, mask);
+                logger.Info($"OnAccessPath({path}, {mask}) -> {error}");
+                return error;
+            }
+            catch (Exception e)
+            {
+                logger.Error($"OnAccessPath({path}, {mask}) -> error: {e.Message}, {e.StackTrace}");
+                return Errno.ENOSYS;
+            }
         }
 
         protected override Errno OnReadSymbolicLink(string path, out string target)
@@ -72,6 +80,7 @@ namespace CassandraFS
             try
             {
                 var rawNames = fileSystemRepository.ReadDirectoryContent(path);
+                // TODO Попробовать убрать
                 rawNames.Add(new DirectoryEntry("."));
                 rawNames.Add(new DirectoryEntry(".."));
                 paths = rawNames;
@@ -91,6 +100,7 @@ namespace CassandraFS
             logger.Info($"OnCreateSpecialFile({path}, {mode}, {rdev})...");
             try
             {
+                mode |= FilePermissions.S_IFREG;
                 var error = fileSystemRepository.TryCreateFile(path, mode, rdev);
                 logger.Info($"OnCreateSpecialFile({path}, {mode}, {rdev}) -> {error}");
                 return error;
@@ -204,17 +214,33 @@ namespace CassandraFS
         protected override Errno OnChangePathPermissions(string path, FilePermissions mode)
         {
             logger.Info($"OnChangePathPermissions({path}, {mode})...");
-            var error = OnGetPathStatus(path, out _);
-            logger.Info($"OnChangePathPermissions({path}, {mode}) -> {error}");
-            return error;
+            try
+            {
+                var error = fileSystemRepository.TryChangePathPermissions(path, mode);
+                logger.Info($"OnChangePathPermissions({path}, {mode}) -> {error}");
+                return error;
+            }
+            catch (Exception e)
+            {
+                logger.Error($"OnChangePathPermissions({path}, {mode}) -> error: {e.Message}, {e.StackTrace}");
+                return Errno.ENOSYS;
+            }
         }
 
         protected override Errno OnChangePathOwner(string path, long uid, long gid)
         {
             logger.Info($"OnChangePathOwner({path}, {uid}, {gid})...");
-            var error = OnGetPathStatus(path, out _);
-            logger.Info($"OnChangePathOwner({path}, {uid}, {gid}) -> {error}");
-            return error;
+            try
+            {
+                var error = fileSystemRepository.TryChangePathOwner(path, (uint)uid, (uint)gid);
+                logger.Info($"OnChangePathOwner({path}, {uid}, {gid}) -> {error}");
+                return error;
+            }
+            catch (Exception e)
+            {
+                logger.Error($"OnChangePathOwner({path}, {uid}, {gid}) -> error: {e.Message}, {e.StackTrace}");
+                return Errno.ENOSYS;
+            }
         }
 
         protected override Errno OnTruncateFile(string path, long size)
