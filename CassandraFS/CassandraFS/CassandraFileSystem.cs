@@ -45,7 +45,7 @@ namespace CassandraFS
             {
                 buf = new Stat();
                 logger.Error($"OnGetPathStatus({path}, {buf}) -> error: {e.Message}, {e.StackTrace}");
-                return Errno.ENOENT;
+                return Errno.ENOSYS;
             }
         }
 
@@ -60,7 +60,7 @@ namespace CassandraFS
         protected override Errno OnReadSymbolicLink(string path, out string target)
         {
             logger.Info($"OnReadSymbolicLink({path})...");
-            var error = Errno.EACCES;
+            var error = Errno.ENOSYS;
             target = null;
             logger.Info($"OnReadSymbolicLink({path}) -> {error}");
             return error;
@@ -82,7 +82,7 @@ namespace CassandraFS
             {
                 paths = null;
                 logger.Error($"OnReadDirectory({path}) -> error: {e.Message}, {e.StackTrace}");
-                return Errno.ENOENT;
+                return Errno.ENOSYS;
             }
         }
 
@@ -98,7 +98,7 @@ namespace CassandraFS
             catch (Exception e)
             {
                 logger.Error($"OnCreateSpecialFile({path}, {mode}, {rdev}) -> error: {e.Message}, {e.StackTrace}");
-                return Errno.ENOENT;
+                return Errno.ENOSYS;
             }
         }
 
@@ -114,7 +114,7 @@ namespace CassandraFS
             catch (Exception e)
             {
                 logger.Error($"OnCreateDirectory({path}, {mode}) -> error: {e.Message}, {e.StackTrace}");
-                return 0;
+                return Errno.ENOSYS;
             }
         }
 
@@ -130,7 +130,7 @@ namespace CassandraFS
             catch (Exception e)
             {
                 logger.Error($"OnRemoveFile({path}) -> error: {e.Message}, {e.StackTrace}");
-                return Errno.ENOENT;
+                return Errno.ENOSYS;
             }
         }
 
@@ -146,7 +146,7 @@ namespace CassandraFS
             catch (Exception e)
             {
                 logger.Error($"OnRemoveDirectory({path}) -> error: {e.Message}, {e.StackTrace}");
-                return Errno.ENOENT;
+                return Errno.ENOSYS;
             }
         }
 
@@ -189,7 +189,7 @@ namespace CassandraFS
             catch (Exception e)
             {
                 logger.Error($"OnRenamePath({from}, {to}) -> error: {e.Message}, {e.StackTrace}");
-                return Errno.ENOENT;
+                return Errno.ENOSYS;
             }
         }
 
@@ -239,7 +239,7 @@ namespace CassandraFS
             catch (Exception e)
             {
                 logger.Error($"OnTruncateFile({path}, {size}) -> error: {e.Message}, {e.StackTrace}");
-                return Errno.ENOENT;
+                return Errno.ENOSYS;
             }
         }
 
@@ -264,7 +264,7 @@ namespace CassandraFS
             catch (Exception e)
             {
                 logger.Error($"OnOpenHandle({path}, {info.OpenFlags}) -> error: {e.Message}, {e.StackTrace}");
-                return Errno.ENOENT;
+                return Errno.ENOSYS;
             }
         }
 
@@ -297,7 +297,7 @@ namespace CassandraFS
             {
                 logger.Error(
                     $"OnReadHandle({path}, {info.OpenFlags}, {info.OpenAccess}, {offset}) -> {bytesRead}, error: {e.Message}, {e.StackTrace}");
-                return Errno.ENOENT;
+                return Errno.ENOSYS;
             }
         }
 
@@ -339,7 +339,7 @@ namespace CassandraFS
                 logger.Error(
                     $"OnWriteHandle({path}, {info.OpenAccess}, {info.OpenFlags}, {offset}) -> {bytesWritten}, error: {e.Message}, {e.StackTrace}"
                 );
-                return Errno.ENOENT;
+                return Errno.ENOSYS;
             }
         }
 
@@ -356,7 +356,7 @@ namespace CassandraFS
             {
                 stbuf = new Statvfs();
                 logger.Error($"OnGetFileSystemStatus({path}, {stbuf}) -> error: {e.Message}, {e.StackTrace}");
-                return Errno.ENOENT;
+                return Errno.ENOSYS;
             }
         }
 
@@ -385,7 +385,7 @@ namespace CassandraFS
             {
                 logger.Error(
                     $"OnSetPathExtendedAttribute({path}, {name}, {flags}) -> error: {e.Message}, {e.StackTrace}");
-                return Errno.ENOENT;
+                return Errno.ENOSYS;
             }
         }
 
@@ -407,7 +407,7 @@ namespace CassandraFS
                 logger.Error(
                     $"OnGetPathExtendedAttribute({path}, {name}) -> {value}, error: {e.Message}, {e.StackTrace}");
                 bytesWritten = 0;
-                return Errno.ENOENT;
+                return Errno.ENOSYS;
             }
         }
 
@@ -424,7 +424,7 @@ namespace CassandraFS
             {
                 names = new string[0];
                 logger.Error($"OnListPathExtendedAttributes({path}) -> error: {e.Message}, {e.StackTrace}");
-                return Errno.ENOENT;
+                return Errno.ENOSYS;
             }
         }
 
@@ -441,7 +441,7 @@ namespace CassandraFS
             catch (Exception e)
             {
                 logger.Error($"OnRemovePathExtendedAttribute({path}, {name}) -> error: {e.Message}, {e.StackTrace}");
-                return Errno.ENOENT;
+                return Errno.ENOSYS;
             }
         }
 
