@@ -83,7 +83,11 @@ namespace CassandraFS
                 return Errno.EEXIST;
             }
 
-            directoryRepository.WriteDirectory(new DirectoryModel {Path = parentDirPath, Name = dirName});
+            GetUidAndGid(out var uid, out var gid);
+            directoryRepository.WriteDirectory(new DirectoryModel
+            {
+                Path = parentDirPath, Name = dirName, FilePermissions = mode, UID = uid, GID = gid
+            });
             return 0;
         }
 
@@ -123,16 +127,16 @@ namespace CassandraFS
             }
 
             // TODO Возможно надо файлы тоже перенести?
-            directoryRepository.DeleteDirectory(from);
             var parentDirPath = GetParentDirectory(to);
             var dirName = GetFileName(to);
-            directoryRepository.WriteDirectory(new DirectoryModel {Path = parentDirPath, Name = dirName});
+            directoryRepository.WriteDirectory(new DirectoryModel { Path = parentDirPath, Name = dirName, FilePermissions = directory.FilePermissions, UID = directory.UID, GID = directory.GID });
+            directoryRepository.DeleteDirectory(from);
             return 0;
         }
 
         public Errno TryReadFile(string path, OpenFlags flags, out FileModel file)
         {
-            // TODO O_APPEND, O_TRUNC
+            // O_APPEND not implemented
             var fileName = GetFileName(path);
             var parentDirPath = GetParentDirectory(path);
             file = null;
@@ -154,14 +158,21 @@ namespace CassandraFS
 
             if (file != null)
             {
+                if ((flags & OpenFlags.O_TRUNC) != 0)
+                {
+                    file.Data = new byte[0];
+                }
                 return 0;
             }
 
             var now = DateTimeOffset.Now;
+            GetEuidAndEgid(out var euid, out var egid);
             file = new FileModel
                 {
                     Path = parentDirPath, Name = fileName, Data = new byte[0], ModifiedTimestamp = now,
-                    ExtendedAttributes = new ExtendedAttributes()
+                    ExtendedAttributes = new ExtendedAttributes(),
+                    FilePermissions = FilePermissions.ACCESSPERMS | FilePermissions.S_IFREG,
+                    GID = egid, UID = euid, ContentGUID = Guid.Empty
                 };
             fileRepository.WriteFile(file);
             return 0;
@@ -189,10 +200,12 @@ namespace CassandraFS
             }
 
             var now = DateTimeOffset.Now;
+            GetUidAndGid(out var uid, out var gid);
             var file = new FileModel
                 {
                     Path = parentDirPath, Name = fileName, Data = new byte[0],
-                    ExtendedAttributes = new ExtendedAttributes(), ModifiedTimestamp = now
+                    ExtendedAttributes = new ExtendedAttributes(), ModifiedTimestamp = now,
+                    FilePermissions = mode, GID = gid, UID = uid, ContentGUID = Guid.Empty
                 };
             fileRepository.WriteFile(file);
             return 0;
@@ -234,7 +247,6 @@ namespace CassandraFS
             }
 
             fileRepository.DeleteFile(from);
-
             var parentDirPath = GetParentDirectory(to);
             var fileName = GetFileName(to);
             file.Name = fileName;
@@ -389,5 +401,18 @@ namespace CassandraFS
             buffer = new Statvfs();
             return error;
         }
+
+        private void GetUidAndGid(out uint uid, out uint gid)
+        {
+            uid = Syscall.getuid();
+            gid = Syscall.getgid();
+        }
+
+        private void GetEuidAndEgid(out uint euid, out uint egid)
+        {
+            euid = Syscall.geteuid();
+            egid = Syscall.getegid();
+        }
+
     }
 }

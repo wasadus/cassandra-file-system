@@ -76,6 +76,9 @@ namespace CassandraFS
                 $"CREATE TABLE IF NOT EXISTS \"{config.MessageSpaceName}\".\"Directories\" (" +
                 "\"path\" text, " +
                 "\"name\" text, " +
+                "\"permissions\" int, "+
+                "\"gid\" int, " +
+                "\"uid\" int, " +
                 "PRIMARY KEY((path), name));"
             );
             session.Execute(
@@ -86,6 +89,9 @@ namespace CassandraFS
                 "\"extended_attributes\" blob, " +
                 "\"data\" blob, " +
                 "\"content_guid\" uuid, " +
+                "\"permissions\" int, " +
+                "\"gid\" int, " +
+                "\"uid\" int, " +
                 "PRIMARY KEY((path), name));"
             );
             session.Execute(
