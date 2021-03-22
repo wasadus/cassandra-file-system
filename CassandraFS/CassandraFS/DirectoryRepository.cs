@@ -43,9 +43,6 @@ namespace CassandraFS
             st_uid = directory.UID,
             st_mode = directory.FilePermissions,
             st_nlink = 1,
-            st_size = long.MaxValue,
-            st_blocks = long.MaxValue / 512,
-            st_blksize = long.MaxValue,
         };
 
         public void WriteDirectory(DirectoryModel directory)
@@ -97,16 +94,16 @@ namespace CassandraFS
         {
             Path = directory.Path,
             Name = directory.Name,
-            FilePermissions = directory.FilePermissions,
-            GID = directory.GID,
-            UID = directory.UID
+            FilePermissions = (FilePermissions)directory.FilePermissions,
+            GID = (uint)directory.GID,
+            UID = (uint)directory.UID
         };
 
         private CQLDirectory GetCQLDirectory(DirectoryModel directory) => new CQLDirectory
         {
             Path = directory.Path,
             Name = directory.Name,
-            FilePermissions = directory.FilePermissions,
+            FilePermissions = (int)directory.FilePermissions,
             GID = directory.GID,
             UID = directory.UID
         };

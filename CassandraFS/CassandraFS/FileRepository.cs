@@ -98,14 +98,14 @@ namespace CassandraFS
         private Stat GetShortFileStat(CQLFile file) => new Stat()
         {
             st_nlink = 1,
-            st_mode = file.FilePermissions,
+            st_mode = (FilePermissions)file.FilePermissions,
             st_size = file.Data?.LongLength ?? 0,
             st_blocks = file.Data?.LongLength / 512 ?? 0,
             st_blksize = file.Data?.LongLength ?? 0, // Optimal size for buffer in I/O operations
             st_atim = DateTimeOffset.Now.ToTimespec(), // access
             st_mtim = file.ModifiedTimestamp.ToTimespec(), // modified
-            st_gid = file.GID,
-            st_uid = file.UID,
+            st_gid = (uint)file.GID,
+            st_uid = (uint)file.UID,
         };
 
         private FileModel GetFileModel(CQLFile file)
@@ -125,9 +125,9 @@ namespace CassandraFS
                 ModifiedTimestamp = file.ModifiedTimestamp,
                 ExtendedAttributes =
                         FileExtendedAttributesHandler.DeserializeExtendedAttributes(file.ExtendedAttributes),
-                FilePermissions = file.FilePermissions,
-                GID = file.GID,
-                UID = file.UID,
+                FilePermissions = (FilePermissions)file.FilePermissions,
+                GID = (uint)file.GID,
+                UID = (uint)file.UID,
                 ContentGUID = file.ContentGuid
             };
         }
@@ -141,7 +141,7 @@ namespace CassandraFS
                 ExtendedAttributes = FileExtendedAttributesHandler.SerializeExtendedAttributes(file.ExtendedAttributes),
                 ModifiedTimestamp = file.ModifiedTimestamp,
                 ContentGuid = Guid.Empty,
-                FilePermissions = file.FilePermissions,
+                FilePermissions = (int)file.FilePermissions,
                 GID = file.GID,
                 UID = file.UID
             };
