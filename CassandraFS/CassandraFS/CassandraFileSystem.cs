@@ -38,7 +38,7 @@ namespace CassandraFS
             try
             {
                 var error = fileSystemRepository.TryGetPathStatus(path, out buf);
-                logger.Info($"OnGetPathStatus({path}, {buf}) -> {error}");
+                logger.Info($"OnGetPathStatus({path}, {buf}) -> {error}, {buf.st_mode}, {buf.st_uid}");
                 return error;
             }
             catch (Exception e)

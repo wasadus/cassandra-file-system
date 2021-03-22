@@ -16,7 +16,7 @@ namespace CassandraFS
     public class DirectoryRepository
     {
         private readonly Table<CQLDirectory> directoriesTableEvent;
-        private readonly DirectoryModel root = new DirectoryModel {Path = "", Name = ""};
+        private readonly DirectoryModel root = new DirectoryModel {Path = "", Name = "", FilePermissions = FilePermissions.ACCESSPERMS | FilePermissions.S_IFDIR, GID = 0, UID = 0};
 
         public DirectoryRepository(ISession session)
         {
@@ -42,7 +42,10 @@ namespace CassandraFS
             st_gid = directory.GID,
             st_uid = directory.UID,
             st_mode = directory.FilePermissions,
-            st_nlink = 1
+            st_nlink = 1,
+            st_size = long.MaxValue,
+            st_blocks = long.MaxValue / 512,
+            st_blksize = long.MaxValue,
         };
 
         public void WriteDirectory(DirectoryModel directory)

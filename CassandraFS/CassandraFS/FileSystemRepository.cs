@@ -351,7 +351,7 @@ namespace CassandraFS
             error = TryReadDirectory(path, out var dir);
             if (error != 0)
             {
-                return 0;
+                return error;
             }
 
             buffer = directoryRepository.GetDirectoryStat(dir);
