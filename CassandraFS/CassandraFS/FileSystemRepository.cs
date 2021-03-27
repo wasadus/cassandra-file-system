@@ -79,7 +79,8 @@ namespace CassandraFS
                 return Errno.EEXIST;
             }
 
-            GetUidAndGid(out var uid, out var gid);
+            var uid = Syscall.getuid();
+            var gid = Syscall.getgid();
             directoryRepository.WriteDirectory(new DirectoryModel
             {
                 Path = parentDirPath, Name = dirName, FilePermissions = mode, UID = uid, GID = gid
@@ -162,7 +163,8 @@ namespace CassandraFS
             }
 
             var now = DateTimeOffset.Now;
-            GetEuidAndEgid(out var euid, out var egid);
+            var euid = Syscall.geteuid();
+            var egid = Syscall.getegid();
             file = new FileModel
                 {
                     Path = parentDirPath, Name = fileName, Data = new byte[0], ModifiedTimestamp = now,
@@ -196,7 +198,8 @@ namespace CassandraFS
             }
 
             var now = DateTimeOffset.Now;
-            GetUidAndGid(out var uid, out var gid);
+            var uid = Syscall.getuid();
+            var gid = Syscall.getgid();
             var file = new FileModel
                 {
                     Path = parentDirPath, Name = fileName, Data = new byte[0],
@@ -368,7 +371,7 @@ namespace CassandraFS
 
             var error = TryReadFile(path, 0, out var file);
 
-            GetEuidAndEgid(out var euid, out var egid);
+            var euid = Syscall.geteuid();
             if (error == 0)
             {
                 if (euid != 0 && file.UID != euid)
@@ -505,42 +508,33 @@ namespace CassandraFS
             return error;
         }
 
-        private void GetUidAndGid(out uint uid, out uint gid)
-        {
-            uid = Syscall.getuid();
-            gid = Syscall.getgid();
-        }
-
-        private void GetEuidAndEgid(out uint euid, out uint egid)
-        {
-            euid = Syscall.geteuid();
-            egid = Syscall.getegid();
-        }
-
         private bool CanUserRead(FilePermissions permissions, uint gid,  uint uid)
         {
-            GetUidAndGid(out var userUid, out var userGid);
-            return userUid == 0
-                || (userUid == uid && (permissions & FilePermissions.S_IRUSR) != 0)
-                || (userGid == gid && (permissions & FilePermissions.S_IRGRP) != 0)
+            var userUID = Syscall.getuid();
+            var userGID = Syscall.getgid();
+            return userUID == 0
+                || (userUID == uid && (permissions & FilePermissions.S_IRUSR) != 0)
+                || (userGID == gid && (permissions & FilePermissions.S_IRGRP) != 0)
                 || (permissions & FilePermissions.S_IROTH) != 0;
         }
 
         private bool CanUserWrite(FilePermissions permissions, uint gid, uint uid)
         {
-            GetUidAndGid(out var userUid, out var userGid);
-            return userUid == 0
-                || (userUid == uid && (permissions & FilePermissions.S_IWUSR) != 0)
-                || (userGid == gid && (permissions & FilePermissions.S_IWGRP) != 0)
+            var userUID = Syscall.getuid();
+            var userGID = Syscall.getgid();
+            return userUID == 0
+                || (userUID == uid && (permissions & FilePermissions.S_IWUSR) != 0)
+                || (userGID == gid && (permissions & FilePermissions.S_IWGRP) != 0)
                 || (permissions & FilePermissions.S_IWOTH) != 0;
         }
 
         private bool CanUserExecute(FilePermissions permissions, uint gid, uint uid)
         {
-            GetUidAndGid(out var userUid, out var userGid);
-            return userUid == 0
-                || (userUid == uid && (permissions & FilePermissions.S_IXUSR) != 0)
-                || (userGid == gid && (permissions & FilePermissions.S_IXGRP) != 0)
+            var userUID = Syscall.getuid();
+            var userGID = Syscall.getgid();
+            return userUID == 0
+                || (userUID == uid && (permissions & FilePermissions.S_IXUSR) != 0)
+                || (userGID == gid && (permissions & FilePermissions.S_IXGRP) != 0)
                 || (permissions & FilePermissions.S_IXOTH) != 0;
         }
 
