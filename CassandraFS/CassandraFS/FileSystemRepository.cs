@@ -394,7 +394,7 @@ namespace CassandraFS
             return 0;
         }
 
-        public Errno TryChangePathOwner(string path, uint uid, uint gid)
+        public Errno TryChangePathOwner(string path, uint newUID, uint newGID)
         {
             var parentDirPath = GetParentDirectory(path);
             if (!directoryRepository.IsDirectoryExists(parentDirPath))
@@ -403,16 +403,14 @@ namespace CassandraFS
             }
 
             var error = TryReadFile(path, 0, out var file);
-
-            GetUidAndGid(out var userUid, out var userGid);
             if (error == 0)
             {
-                if ((file.UID != uid && userUid != 0) || file.GID != gid && userUid != file.UID && userUid != 0)
+                if (!IsChownPermissionsOk(file, newUID, newGID))
                 {
                     return Errno.EPERM;
                 }
-                file.UID = uid;
-                file.GID = gid;
+                file.UID = newUID;
+                file.GID = newGID;
 
                 fileRepository.WriteFile(file);
                 return 0;
@@ -423,12 +421,12 @@ namespace CassandraFS
             {
                 return error;
             }
-            if ((dir.UID != uid && userUid != 0) || dir.GID != gid && userUid != dir.UID && userUid != 0)
+            if (!IsChownPermissionsOk(dir, newUID, newGID))
             {
                 return Errno.EPERM;
             }
-            dir.UID = uid;
-            dir.GID = gid;
+            dir.UID = newUID;
+            dir.GID = newGID;
             directoryRepository.WriteDirectory(dir);
             return 0;
         }
@@ -544,6 +542,18 @@ namespace CassandraFS
                 || (userUid == uid && (permissions & FilePermissions.S_IXUSR) != 0)
                 || (userGid == gid && (permissions & FilePermissions.S_IXGRP) != 0)
                 || (permissions & FilePermissions.S_IXOTH) != 0;
+        }
+
+        private bool IsChownPermissionsOk(FileModel file, uint newUID, uint newGID)
+        {
+            var userUID = Syscall.getuid();
+            return userUID == 0 || (file.UID == newUID && (file.GID == newGID || userUID == file.UID));
+        }
+
+        private bool IsChownPermissionsOk(DirectoryModel directory, uint newUID, uint newGID)
+        {
+            var userUID = Syscall.getuid();
+            return userUID == 0 || (directory.UID == newUID && (directory.GID == newGID || userUID == directory.UID));
         }
     }
 }
