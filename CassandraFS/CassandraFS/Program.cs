@@ -79,6 +79,7 @@ namespace CassandraFS
                 "\"permissions\" int, " +
                 "\"gid\" bigint, " +
                 "\"uid\" bigint, " +
+                "\"modified\" timestamp, " +
                 "PRIMARY KEY((path), name));"
             );
             session.Execute(

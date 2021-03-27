@@ -1,4 +1,5 @@
 ﻿using Cassandra.Mapping.Attributes;
+using System;
 
 namespace CassandraFS
 {
@@ -21,5 +22,8 @@ namespace CassandraFS
 
         [Column("uid")]
         public long UID { get; set; }
+
+        [Column("modified")]
+        public DateTimeOffset ModifiedTimestamp { get; set; }
     }
 }

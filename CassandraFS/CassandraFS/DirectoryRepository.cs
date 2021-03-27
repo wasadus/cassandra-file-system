@@ -16,7 +16,7 @@ namespace CassandraFS
     public class DirectoryRepository
     {
         private readonly Table<CQLDirectory> directoriesTableEvent;
-        private readonly DirectoryModel root = new DirectoryModel {Path = "", Name = "", FilePermissions = FilePermissions.ACCESSPERMS | FilePermissions.S_IFDIR, GID = 0, UID = 0};
+        private readonly DirectoryModel root = new DirectoryModel {Path = "", Name = "", FilePermissions = FilePermissions.ACCESSPERMS | FilePermissions.S_IFDIR, GID = 0, UID = 0, ModifiedTimestamp = DateTimeOffset.Now};
 
         public DirectoryRepository(ISession session)
         {
@@ -27,23 +27,13 @@ namespace CassandraFS
             directoriesTableEvent
                 .Where(entry => entry.Path.Equals(path))
                 .Execute()
-                .Select(dir => new DirectoryEntry(dir.Name) { Stat = GetDirectoryStat(GetDirectoryModel(dir)) });
+                .Select(dir => new DirectoryEntry(dir.Name) { Stat = GetDirectoryModel(dir).GetStat() });
 
         public bool IsDirectoriesExists(string directoryPath) =>
             directoriesTableEvent
                 .Where(f => f.Path == directoryPath)
                 .Execute()
                 .Any();
-
-        public Stat GetDirectoryStat(DirectoryModel directory) => new Stat()
-        {
-            st_atim = DateTimeOffset.Now.ToTimespec(),
-            st_mtim = DateTimeOffset.Now.ToTimespec(),
-            st_gid = directory.GID,
-            st_uid = directory.UID,
-            st_mode = directory.FilePermissions,
-            st_nlink = 1,
-        };
 
         public void WriteDirectory(DirectoryModel directory)
            => directoriesTableEvent.Insert(GetCQLDirectory(directory)).Execute();
@@ -96,7 +86,8 @@ namespace CassandraFS
             Name = directory.Name,
             FilePermissions = (FilePermissions)directory.FilePermissions,
             GID = (uint)directory.GID,
-            UID = (uint)directory.UID
+            UID = (uint)directory.UID,
+            ModifiedTimestamp = directory.ModifiedTimestamp
         };
 
         private CQLDirectory GetCQLDirectory(DirectoryModel directory) => new CQLDirectory
@@ -105,7 +96,8 @@ namespace CassandraFS
             Name = directory.Name,
             FilePermissions = (int)directory.FilePermissions,
             GID = directory.GID,
-            UID = directory.UID
+            UID = directory.UID,
+            ModifiedTimestamp = directory.ModifiedTimestamp
         };
     }
 }

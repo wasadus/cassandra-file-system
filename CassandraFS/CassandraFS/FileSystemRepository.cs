@@ -83,7 +83,7 @@ namespace CassandraFS
             var gid = Syscall.getgid();
             directoryRepository.WriteDirectory(new DirectoryModel
             {
-                Path = parentDirPath, Name = dirName, FilePermissions = mode, UID = uid, GID = gid
+                Path = parentDirPath, Name = dirName, FilePermissions = mode, UID = uid, GID = gid, ModifiedTimestamp = DateTimeOffset.Now
             });
             return 0;
         }
@@ -126,7 +126,7 @@ namespace CassandraFS
             // TODO Возможно надо файлы тоже перенести?
             var parentDirPath = GetParentDirectory(to);
             var dirName = GetFileName(to);
-            directoryRepository.WriteDirectory(new DirectoryModel { Path = parentDirPath, Name = dirName, FilePermissions = directory.FilePermissions, UID = directory.UID, GID = directory.GID });
+            directoryRepository.WriteDirectory(new DirectoryModel { Path = parentDirPath, Name = dirName, FilePermissions = directory.FilePermissions, UID = directory.UID, GID = directory.GID, ModifiedTimestamp = DateTimeOffset.Now });
             directoryRepository.DeleteDirectory(from);
             return 0;
         }
@@ -344,144 +344,82 @@ namespace CassandraFS
                 return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
             }
 
-            var error = TryReadFile(path, 0, out var file);
-            if (error == 0)
-            {
-                buffer = fileRepository.GetFileStat(file);
-                return 0;
-            }
-
-            error = TryReadDirectory(path, out var dir);
+            var error = TryGetFileSystemEntry(path, out var entry);
             if (error != 0)
             {
                 return error;
             }
-
-            buffer = directoryRepository.GetDirectoryStat(dir);
+            buffer = entry.GetStat();
             return 0;
         }
 
         public Errno TryChangePathPermissions(string path, FilePermissions permissions)
         {
-            var parentDirPath = GetParentDirectory(path);
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
-            {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
-            }
-
-            var error = TryReadFile(path, 0, out var file);
-
-            var euid = Syscall.geteuid();
-            if (error == 0)
-            {
-                if (euid != 0 && file.UID != euid)
-                {
-                    return Errno.EPERM;
-                }
-                file.FilePermissions = permissions;
-                fileRepository.WriteFile(file);
-                return 0;
-            }
-
-            error = TryReadDirectory(path, out var dir);
+            var error = TryGetFileSystemEntry(path, out var entry);
             if (error != 0)
             {
                 return error;
             }
-            if (euid != 0 && dir.UID != euid)
+
+            var euid = Syscall.geteuid();
+            if (euid != 0 && entry.UID != euid)
             {
                 return Errno.EPERM;
             }
-            dir.FilePermissions = permissions;
-            directoryRepository.WriteDirectory(dir);
+
+            WriteFileSystemEntry(entry);
             return 0;
         }
 
         public Errno TryChangePathOwner(string path, uint newUID, uint newGID)
         {
-            var parentDirPath = GetParentDirectory(path);
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
-            {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
-            }
-
-            var error = TryReadFile(path, 0, out var file);
-            if (error == 0)
-            {
-                if (!IsChownPermissionsOk(file, newUID, newGID))
-                {
-                    return Errno.EPERM;
-                }
-                file.UID = newUID;
-                file.GID = newGID;
-
-                fileRepository.WriteFile(file);
-                return 0;
-            }
-
-            error = TryReadDirectory(path, out var dir);
+            var error = TryGetFileSystemEntry(path, out var entry);
             if (error != 0)
             {
                 return error;
             }
-            if (!IsChownPermissionsOk(dir, newUID, newGID))
+
+            if (!IsChownPermissionsOk(entry, newUID, newGID))
             {
                 return Errno.EPERM;
             }
-            dir.UID = newUID;
-            dir.GID = newGID;
-            directoryRepository.WriteDirectory(dir);
+            entry.UID = newUID;
+            entry.GID = newGID;
+
+            WriteFileSystemEntry(entry);
             return 0;
         }
 
         public Errno TryGetAccessToPath(string path, AccessModes mode)
         {
-            var parentDirPath = GetParentDirectory(path);
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
+            var error = TryGetFileSystemEntry(path, out var entry);
+            if (error != 0)
             {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
 
-            var error = TryReadFile(path, 0, out var file);
+            var permissions = entry.FilePermissions;
+            var fileUID = entry.UID;
+            var fileGID = entry.GID;
 
-            FilePermissions permissions;
-            uint uid;
-            uint gid;
-
-            if (error == 0)
-            {
-                permissions = file.FilePermissions;
-                gid = file.GID;
-                uid = file.UID;
-            }
-            else
-            {
-                error = TryReadDirectory(path, out var dir);
-                if (error != 0)
-                {
-                    return error;
-                }
-                permissions = dir.FilePermissions;
-                gid = dir.GID;
-                uid = dir.UID;
-            }
-
-            return ((AccessModes.R_OK & mode) != 0 && !CanUserRead(permissions, gid, uid))
-                || ((AccessModes.W_OK & mode) != 0 && !CanUserWrite(permissions, gid, uid))
-                || ((AccessModes.X_OK & mode) != 0 && !CanUserExecute(permissions, gid, uid))
+            var userUID = Syscall.getuid();
+            var userGID = Syscall.getgid();
+            return ((AccessModes.R_OK & mode) != 0 && !CanUserRead(permissions, userUID, userGID, fileUID, fileGID))
+                || ((AccessModes.W_OK & mode) != 0 && !CanUserWrite(permissions, userUID, userGID, fileUID, fileGID))
+                || ((AccessModes.X_OK & mode) != 0 && !CanUserExecute(permissions, userUID, userGID, fileUID, fileGID))
                 ? Errno.EACCES
                 : 0;
         }
 
         public Errno TryGetFileSystemStatus(string path, out Statvfs buffer)
         {
-            var parentDirPath = GetParentDirectory(path);
             buffer = new Statvfs();
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
+            var error = TryGetFileSystemEntry(path, out var _);
+            if (error != 0)
             {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
-
+            
             buffer.f_bsize = 4096;
             buffer.f_frsize = 4096;
             buffer.f_blocks = 1; // just not zero
@@ -493,61 +431,70 @@ namespace CassandraFS
             buffer.f_fsid = 1;
             buffer.f_namemax = 255;
 
-            if (directoryRepository.IsDirectoryExists(path))
+            return 0;
+        }
+
+        private Errno TryGetFileSystemEntry(string path, out IFileSystemEntry entry)
+        {
+            entry = null;
+            var parentDirPath = GetParentDirectory(path);
+            if (!directoryRepository.IsDirectoryExists(parentDirPath))
             {
-                return 0;
+                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
             }
 
             var error = TryReadFile(path, 0, out var file);
             if (error == 0)
             {
+                entry = file;
                 return 0;
             }
-
-            buffer = new Statvfs();
+            error = TryReadDirectory(path, out var dir);
+            if (error == 0)
+            {
+                entry = dir;
+                return 0;
+            }
             return error;
         }
 
-        private bool CanUserRead(FilePermissions permissions, uint gid,  uint uid)
-        {
-            var userUID = Syscall.getuid();
-            var userGID = Syscall.getgid();
-            return userUID == 0
-                || (userUID == uid && (permissions & FilePermissions.S_IRUSR) != 0)
-                || (userGID == gid && (permissions & FilePermissions.S_IRGRP) != 0)
+        private bool CanUserRead(FilePermissions permissions, uint userUID, uint userGID, uint fileUID, uint fileGID) =>
+            userUID == 0
+                || (userUID == fileUID && (permissions & FilePermissions.S_IRUSR) != 0)
+                || (userGID == fileGID && (permissions & FilePermissions.S_IRGRP) != 0)
                 || (permissions & FilePermissions.S_IROTH) != 0;
-        }
 
-        private bool CanUserWrite(FilePermissions permissions, uint gid, uint uid)
-        {
-            var userUID = Syscall.getuid();
-            var userGID = Syscall.getgid();
-            return userUID == 0
-                || (userUID == uid && (permissions & FilePermissions.S_IWUSR) != 0)
-                || (userGID == gid && (permissions & FilePermissions.S_IWGRP) != 0)
+        private bool CanUserWrite(FilePermissions permissions, uint userUID, uint userGID, uint fileUID, uint fileGID) =>
+            userUID == 0
+                || (userUID == fileUID && (permissions & FilePermissions.S_IWUSR) != 0)
+                || (userGID == fileGID && (permissions & FilePermissions.S_IWGRP) != 0)
                 || (permissions & FilePermissions.S_IWOTH) != 0;
-        }
 
-        private bool CanUserExecute(FilePermissions permissions, uint gid, uint uid)
-        {
-            var userUID = Syscall.getuid();
-            var userGID = Syscall.getgid();
-            return userUID == 0
-                || (userUID == uid && (permissions & FilePermissions.S_IXUSR) != 0)
-                || (userGID == gid && (permissions & FilePermissions.S_IXGRP) != 0)
+        private bool CanUserExecute(FilePermissions permissions, uint userUID, uint userGID, uint fileUID, uint fileGID) =>
+            userUID == 0
+                || (userUID == fileUID && (permissions & FilePermissions.S_IXUSR) != 0)
+                || (userGID == fileGID && (permissions & FilePermissions.S_IXGRP) != 0)
                 || (permissions & FilePermissions.S_IXOTH) != 0;
-        }
 
-        private bool IsChownPermissionsOk(FileModel file, uint newUID, uint newGID)
+        private bool IsChownPermissionsOk(IFileSystemEntry entry, uint newUID, uint newGID)
         {
             var userUID = Syscall.getuid();
-            return userUID == 0 || (file.UID == newUID && (file.GID == newGID || userUID == file.UID));
+            return userUID == 0 || (entry.UID == newUID && (entry.GID == newGID || userUID == entry.UID));
         }
 
-        private bool IsChownPermissionsOk(DirectoryModel directory, uint newUID, uint newGID)
+        private void WriteFileSystemEntry(IFileSystemEntry entry)
         {
-            var userUID = Syscall.getuid();
-            return userUID == 0 || (directory.UID == newUID && (directory.GID == newGID || userUID == directory.UID));
+            switch (entry)
+            {
+                case FileModel _:
+                    fileRepository.WriteFile(entry as FileModel);
+                    return;
+                case DirectoryModel _:
+                    directoryRepository.WriteDirectory(entry as DirectoryModel);
+                    return;
+                default:
+                    throw new NotImplementedException($"Unsupported FileSystemEntry type: {entry}");
+            }
         }
     }
 }

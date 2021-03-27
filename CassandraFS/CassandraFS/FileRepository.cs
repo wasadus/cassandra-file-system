@@ -29,26 +29,13 @@ namespace CassandraFS
             filesTableEvent
                 .Where(entry => entry.Path.Equals(path))
                 .Execute()
-                .Select(file => new DirectoryEntry(file.Name) { Stat = GetShortFileStat(file) });
+                .Select(file => new DirectoryEntry(file.Name) { Stat = GetShortStat(file) });
 
         public bool IsFilesExists(string directoryPath) =>
             filesTableEvent
                 .Where(f => f.Path == directoryPath)
                 .Execute()
                 .Any();
-
-        public Stat GetFileStat(FileModel file) => new Stat()
-        {
-            st_nlink = 1,
-            st_mode = file.FilePermissions,
-            st_size = file.Data?.LongLength ?? 0,
-            st_blocks = file.Data?.LongLength / 512 ?? 0,
-            st_blksize = file.Data?.LongLength ?? 0, // Optimal size for buffer in I/O operations
-            st_atim = DateTimeOffset.Now.ToTimespec(), // access
-            st_mtim = file.ModifiedTimestamp.ToTimespec(), // modified
-            st_gid = file.GID,
-            st_uid = file.UID,
-        };
 
         public void WriteFile(FileModel file)
            => filesTableEvent.Insert(GetCQLFile(file)).SetTTL(TTL).Execute();
@@ -95,7 +82,7 @@ namespace CassandraFS
         }
 
         // Если файл большой, то не будет осуществляться запрос к второй таблице и размер будет 0
-        private Stat GetShortFileStat(CQLFile file) => new Stat()
+        private Stat GetShortStat(CQLFile file) => new Stat()
         {
             st_nlink = 1,
             st_mode = (FilePermissions)file.FilePermissions,
@@ -153,7 +140,7 @@ namespace CassandraFS
                 filesContentTableEvent.Insert(cqlFileContent).SetTTL(TTL).Execute();
             }
             else
-            { 
+            {
                 filesContentTableEvent
                     .Where(fileContent => fileContent.GUID.Equals(file.ContentGUID))
                     .Delete()
