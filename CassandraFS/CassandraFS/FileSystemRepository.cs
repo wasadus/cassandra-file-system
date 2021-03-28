@@ -48,11 +48,10 @@ namespace CassandraFS
 
         public Errno TryReadDirectory(string path, out DirectoryModel directory)
         {
-            var parentDirPath = GetParentDirectory(path);
             directory = null;
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
+            if (!IsDirectoryValid(GetParentDirectory(path), out var error))
             {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
 
             if (fileRepository.IsFileExists(path))
@@ -69,9 +68,9 @@ namespace CassandraFS
             var dirName = GetFileName(path);
             var parentDirPath = GetParentDirectory(path);
 
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
+            if (!IsDirectoryValid(parentDirPath, out var error))
             {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
 
             if (directoryRepository.IsDirectoryExists(path))
@@ -90,9 +89,9 @@ namespace CassandraFS
 
         public Errno TryDeleteDirectory(string path)
         {
-            if (!directoryRepository.IsDirectoryExists(path))
+            if (!IsDirectoryValid(path, out var error))
             {
-                return fileRepository.IsFileExists(path) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
 
             if (!IsDirectoryEmpty(path))
@@ -137,9 +136,9 @@ namespace CassandraFS
             var fileName = GetFileName(path);
             var parentDirPath = GetParentDirectory(path);
             file = null;
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
+            if (!IsDirectoryValid(parentDirPath, out var error))
             {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
 
             if (directoryRepository.IsDirectoryExists(path))
@@ -187,9 +186,9 @@ namespace CassandraFS
             var fileName = GetFileName(path);
             var parentDirPath = GetParentDirectory(path);
 
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
+            if (!IsDirectoryValid(parentDirPath, out var error))
             {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
 
             if (fileRepository.IsFileExists(path))
@@ -212,10 +211,9 @@ namespace CassandraFS
 
         public Errno TryDeleteFile(string path)
         {
-            var parentDirPath = GetParentDirectory(path);
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
+            if (!IsDirectoryValid(GetParentDirectory(path), out var error))
             {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
 
             if (!fileRepository.IsFileExists(path))
@@ -337,13 +335,7 @@ namespace CassandraFS
 
         public Errno TryGetPathStatus(string path, out Stat buffer)
         {
-            var parentDirPath = GetParentDirectory(path);
             buffer = new Stat();
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
-            {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
-            }
-
             var error = TryGetFileSystemEntry(path, out var entry);
             if (error != 0)
             {
@@ -437,13 +429,12 @@ namespace CassandraFS
         private Errno TryGetFileSystemEntry(string path, out IFileSystemEntry entry)
         {
             entry = null;
-            var parentDirPath = GetParentDirectory(path);
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
+            if (IsDirectoryValid(GetParentDirectory(path), out var error))
             {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
 
-            var error = TryReadFile(path, 0, out var file);
+            error = TryReadFile(path, 0, out var file);
             if (error == 0)
             {
                 entry = file;
@@ -495,6 +486,17 @@ namespace CassandraFS
                 default:
                     throw new NotImplementedException($"Unsupported FileSystemEntry type: {entry}");
             }
+        }
+
+        private bool IsDirectoryValid(string directory, out Errno error)
+        {
+            error = 0;
+            if (!directoryRepository.IsDirectoryExists(directory))
+            {
+                error =  fileRepository.IsFileExists(directory) ? Errno.ENOTDIR : Errno.ENOENT;
+                return false;
+            }
+            return true;
         }
     }
 }
