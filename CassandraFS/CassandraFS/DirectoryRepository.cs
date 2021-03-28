@@ -51,7 +51,7 @@ namespace CassandraFS
                       .FirstOrDefault(d => d.Path.Equals(parentDirPath) && d.Name.Equals(dirName))
                       .Execute();
             
-            return dir == null ? null : GetDirectoryModel(dir);
+            return GetDirectoryModel(dir);
         }
 
         public void DeleteDirectory(string path)
@@ -80,15 +80,18 @@ namespace CassandraFS
             return result;
         }
 
-        private DirectoryModel GetDirectoryModel(CQLDirectory directory) => new DirectoryModel
-        {
-            Path = directory.Path,
-            Name = directory.Name,
-            FilePermissions = (FilePermissions)directory.FilePermissions,
-            GID = (uint)directory.GID,
-            UID = (uint)directory.UID,
-            ModifiedTimestamp = directory.ModifiedTimestamp
-        };
+        private DirectoryModel GetDirectoryModel(CQLDirectory directory) =>
+            directory == null
+                ? null
+                : new DirectoryModel
+                {
+                    Path = directory.Path,
+                    Name = directory.Name,
+                    FilePermissions = (FilePermissions)directory.FilePermissions,
+                    GID = (uint)directory.GID,
+                    UID = (uint)directory.UID,
+                    ModifiedTimestamp = directory.ModifiedTimestamp
+                };
 
         private CQLDirectory GetCQLDirectory(DirectoryModel directory) => new CQLDirectory
         {
