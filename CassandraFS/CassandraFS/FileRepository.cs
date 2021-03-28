@@ -47,7 +47,7 @@ namespace CassandraFS
             var file = filesTableEvent
                        .FirstOrDefault(f => f.Path.Equals(parentDirPath) && f.Name.Equals(fileName))
                        .Execute();
-            return file == null ? null : GetFileModel(file);
+            return GetFileModel(file);
         }
 
         public void DeleteFile(string path)
@@ -97,6 +97,11 @@ namespace CassandraFS
 
         private FileModel GetFileModel(CQLFile file)
         {
+            if (file == null)
+            {
+                return null;
+            }
+
             if (file.ContentGuid != null)
             {
                 file.Data = filesContentTableEvent
@@ -141,13 +146,18 @@ namespace CassandraFS
             }
             else
             {
-                filesContentTableEvent
-                    .Where(fileContent => fileContent.GUID.Equals(file.ContentGUID))
-                    .Delete()
-                    .Execute();
+                RemoveFileContent((Guid)file.ContentGUID);
                 cqlFile.Data = file.Data;
             }
             return cqlFile;
+        }
+
+        private void RemoveFileContent(Guid contentGuid)
+        {
+            filesContentTableEvent
+                    .Where(fileContent => fileContent.GUID.Equals(contentGuid))
+                    .Delete()
+                    .Execute();
         }
     }
 }
