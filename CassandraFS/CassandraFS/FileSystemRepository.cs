@@ -169,7 +169,7 @@ namespace CassandraFS
                     Path = parentDirPath, Name = fileName, Data = new byte[0], ModifiedTimestamp = now,
                     ExtendedAttributes = new ExtendedAttributes(),
                     FilePermissions = FilePermissions.ACCESSPERMS | FilePermissions.S_IFREG,
-                    GID = egid, UID = euid, ContentGUID = Guid.Empty
+                    GID = egid, UID = euid, ContentGUID = null
                 };
             fileRepository.WriteFile(file);
             return 0;
@@ -203,7 +203,7 @@ namespace CassandraFS
                 {
                     Path = parentDirPath, Name = fileName, Data = new byte[0],
                     ExtendedAttributes = new ExtendedAttributes(), ModifiedTimestamp = now,
-                    FilePermissions = mode, GID = gid, UID = uid, ContentGUID = Guid.Empty
+                    FilePermissions = mode, GID = gid, UID = uid, ContentGUID = null
                 };
             fileRepository.WriteFile(file);
             return 0;
@@ -426,6 +426,7 @@ namespace CassandraFS
             return 0;
         }
 
+        // TODO Может сделать bool и out Errno?
         private Errno TryGetFileSystemEntry(string path, out IFileSystemEntry entry)
         {
             entry = null;

@@ -25,7 +25,7 @@ namespace CassandraFS
         public byte[] Data { get; set; }
 
         [Column("content_guid")]
-        public Guid ContentGuid { get; set; }
+        public Guid? ContentGuid { get; set; }
 
         [Column("permissions")]
         public int FilePermissions { get; set; }

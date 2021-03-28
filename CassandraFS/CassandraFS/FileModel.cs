@@ -14,7 +14,7 @@ namespace CassandraFS
         public FilePermissions FilePermissions { get; set; }
         public uint GID { get; set; }
         public uint UID { get; set; }
-        public Guid ContentGUID { get; set; }
+        public Guid? ContentGUID { get; set; }
 
         public Stat GetStat() => new Stat()
         {

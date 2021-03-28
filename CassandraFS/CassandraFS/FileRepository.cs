@@ -56,7 +56,7 @@ namespace CassandraFS
             var parentDirPath = FileSystemRepository.GetParentDirectory(path);
             var file = filesTableEvent
                        .FirstOrDefault(d => d.Path.Equals(parentDirPath) && d.Name.Equals(fileName)).Execute();
-            if (!file.ContentGuid.Equals(Guid.Empty))
+            if (file.ContentGuid != null)
             {
                 filesContentTableEvent
                     .Where(f => f.GUID.Equals(file.ContentGuid))
@@ -97,7 +97,7 @@ namespace CassandraFS
 
         private FileModel GetFileModel(CQLFile file)
         {
-            if (!file.ContentGuid.Equals(Guid.Empty))
+            if (file.ContentGuid != null)
             {
                 file.Data = filesContentTableEvent
                             .FirstOrDefault(f => f.GUID.Equals(file.ContentGuid))
@@ -127,14 +127,14 @@ namespace CassandraFS
                 Name = file.Name,
                 ExtendedAttributes = FileExtendedAttributesHandler.SerializeExtendedAttributes(file.ExtendedAttributes),
                 ModifiedTimestamp = file.ModifiedTimestamp,
-                ContentGuid = Guid.Empty,
+                ContentGuid = null,
                 FilePermissions = (int)file.FilePermissions,
                 GID = file.GID,
                 UID = file.UID
             };
             if (file.Data.Length > dataBufferSize)
             {
-                var guid = file.ContentGUID.Equals(Guid.Empty) ? Guid.NewGuid() : file.ContentGUID;
+                var guid = file.ContentGUID == null ? Guid.NewGuid() : file.ContentGUID;
                 cqlFile.ContentGuid = guid;
                 var cqlFileContent = new CQLFileContent { GUID = guid, Data = file.Data };
                 filesContentTableEvent.Insert(cqlFileContent).SetTTL(TTL).Execute();
