@@ -6,6 +6,8 @@ using System.Linq;
 using Mono.Fuse.NETStandard;
 using Mono.Unix.Native;
 
+using Vostok.Logging.Abstractions;
+
 namespace CassandraFS
 {
     public class FileSystemRepository
@@ -13,11 +15,13 @@ namespace CassandraFS
         private static readonly HashSet<string> rootDirPaths = new HashSet<string> {"", "."};
         private readonly FileRepository fileRepository;
         private readonly DirectoryRepository directoryRepository;
+        private readonly ILog logger;
 
-        public FileSystemRepository(FileRepository fileRepository, DirectoryRepository directoryRepository)
+        public FileSystemRepository(FileRepository fileRepository, DirectoryRepository directoryRepository, ILog logger)
         {
             this.directoryRepository = directoryRepository;
             this.fileRepository = fileRepository;
+            this.logger = logger.ForContext("FileSystemRepository");
         }
 
         public List<DirectoryEntry> ReadDirectoryContent(string path) =>
@@ -51,6 +55,7 @@ namespace CassandraFS
             directory = null;
             if (!IsDirectoryValid(GetParentDirectory(path), out var error))
             {
+                logger.Info($"TryReadDirectory -> !IsDirectoryValid {GetParentDirectory(path)}");
                 return error;
             }
 
@@ -60,6 +65,7 @@ namespace CassandraFS
             }
 
             directory = directoryRepository.ReadDirectory(path);
+            logger.Info($"TryReadDirectory -> {directory?.Name}");
             return directory == null ? Errno.ENOENT : 0;
         }
 
@@ -80,9 +86,15 @@ namespace CassandraFS
 
             var uid = Syscall.getuid();
             var gid = Syscall.getgid();
+            mode |= FilePermissions.S_IFDIR;
             directoryRepository.WriteDirectory(new DirectoryModel
                 {
-                    Path = parentDirPath, Name = dirName, FilePermissions = mode, UID = uid, GID = gid, ModifiedTimestamp = DateTimeOffset.Now
+                    Path = parentDirPath,
+                    Name = dirName,
+                    FilePermissions = mode,
+                    UID = uid,
+                    GID = gid,
+                    ModifiedTimestamp = DateTimeOffset.Now
                 });
             return 0;
         }
@@ -122,7 +134,7 @@ namespace CassandraFS
                 return Errno.EEXIST;
             }
 
-            // TODO Возможно надо файлы тоже перенести?
+            // TODO надо файлы тоже перенести
             var parentDirPath = GetParentDirectory(to);
             var dirName = GetFileName(to);
             directoryRepository.WriteDirectory(new DirectoryModel
@@ -359,6 +371,7 @@ namespace CassandraFS
                 return error;
             }
             buffer = entry.GetStat();
+            logger.Info($"TryGetPathStatus -> buffer {buffer.st_mode}, {buffer.st_gid}, {buffer.st_uid}, {buffer.st_atim}");
             return 0;
         }
 
@@ -447,23 +460,27 @@ namespace CassandraFS
         private Errno TryGetFileSystemEntry(string path, out IFileSystemEntry entry)
         {
             entry = null;
-            if (IsDirectoryValid(GetParentDirectory(path), out var error))
+            if (!IsDirectoryValid(GetParentDirectory(path), out var error))
             {
+                logger.Info($"TryGetFileSystemEntry -> !IsDirectoryValid {GetParentDirectory(path)}");
                 return error;
             }
 
             error = TryReadFile(path, 0, out var file);
             if (error == 0)
             {
+                logger.Info($"TryGetFileSystemEntry -> file {file.Name}");
                 entry = file;
                 return 0;
             }
             error = TryReadDirectory(path, out var dir);
             if (error == 0)
             {
+                logger.Info($"TryGetFileSystemEntry -> directory {dir.Name}");
                 entry = dir;
                 return 0;
             }
+            logger.Info($"TryGetFileSystemEntry -> error {error}");
             return error;
         }
 
@@ -471,11 +488,11 @@ namespace CassandraFS
         {
             switch (entry)
             {
-            case FileModel _:
-                fileRepository.WriteFile(entry as FileModel);
+            case FileModel model:
+                fileRepository.WriteFile(model);
                 return;
-            case DirectoryModel _:
-                directoryRepository.WriteDirectory(entry as DirectoryModel);
+            case DirectoryModel model:
+                directoryRepository.WriteDirectory(model);
                 return;
             default:
                 throw new NotImplementedException($"Unsupported FileSystemEntry type: {entry}");

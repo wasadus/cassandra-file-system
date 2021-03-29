@@ -61,7 +61,7 @@ namespace CassandraFS
                        .FirstOrDefault(d => d.Path.Equals(parentDirPath) && d.Name.Equals(fileName)).Execute();
             if (file.ContentGuid.HasValue)
             {
-                var error = blobStorage.TryDelete(file.ContentGuid.ToString(), DateTimeOffset.Now);
+                blobStorage.TryDelete(file.ContentGuid.ToString(), DateTimeOffset.Now);
                 //filesContentTableEvent
                 //    .Where(f => f.GUID.Equals(file.ContentGuid))
                 //    .Delete()
@@ -137,14 +137,13 @@ namespace CassandraFS
                 Name = file.Name,
                 ExtendedAttributes = FileExtendedAttributesHandler.SerializeExtendedAttributes(file.ExtendedAttributes),
                 ModifiedTimestamp = file.ModifiedTimestamp,
-                ContentGuid = null,
                 FilePermissions = (int)file.FilePermissions,
                 GID = file.GID,
                 UID = file.UID
             };
             if (file.Data.Length > dataBufferSize)
             {
-                var guid = file.ContentGUID.HasValue ? file.ContentGUID : Guid.NewGuid();
+                var guid = file.ContentGUID ?? Guid.NewGuid();
                 cqlFile.ContentGuid = guid;
                 //var cqlFileContent = new CQLFileContent { GUID = guid, Data = file.Data };
                 //filesContentTableEvent.Insert(cqlFileContent).SetTTL(TTL).Execute();
@@ -152,18 +151,20 @@ namespace CassandraFS
             }
             else
             {
-                RemoveFileContent((Guid)file.ContentGUID);
+                RemoveFileContent(file.ContentGUID);
                 cqlFile.Data = file.Data;
             }
             return cqlFile;
         }
 
-        private void RemoveFileContent(Guid contentGuid)
+        private void RemoveFileContent(Guid? contentGuid)
         {
             //filesContentTableEvent
             //        .Where(fileContent => fileContent.GUID.Equals(contentGuid))
             //        .Delete()
             //        .Execute();
+            if (!contentGuid.HasValue)
+                return;
             blobStorage.TryDelete(contentGuid.ToString(), DateTimeOffset.Now);
         }
     }
