@@ -15,20 +15,25 @@ namespace CassandraFS
         [Column("name")]
         public string Name { get; set; }
 
-        [ClusteringKey(0)]
         [Column("modified")]
         public DateTimeOffset ModifiedTimestamp { get; set; }
 
-        [ClusteringKey(0)]
         [Column("extended_attributes")]
         public byte[] ExtendedAttributes { get; set; }
 
-        [ClusteringKey(0)]
         [Column("data")]
         public byte[] Data { get; set; }
 
-        [ClusteringKey(0)]
         [Column("content_guid")]
-        public Guid ContentGuid { get; set; }
+        public Guid? ContentGuid { get; set; }
+
+        [Column("permissions")]
+        public int FilePermissions { get; set; }
+
+        [Column("gid")]
+        public long GID { get; set; }
+
+        [Column("uid")]
+        public long UID { get; set; }
     }
 }

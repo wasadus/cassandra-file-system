@@ -8,13 +8,15 @@ using System.Linq;
 using Cassandra;
 
 using Mono.Fuse.NETStandard;
+using Mono.Unix.Native;
+using System;
 
 namespace CassandraFS
 {
     public class DirectoryRepository
     {
         private readonly Table<CQLDirectory> directoriesTableEvent;
-        private readonly DirectoryModel root = new DirectoryModel {Path = "", Name = ""};
+        private readonly DirectoryModel root = new DirectoryModel {Path = "", Name = "", FilePermissions = FilePermissions.ACCESSPERMS | FilePermissions.S_IFDIR, GID = 0, UID = 0, ModifiedTimestamp = DateTimeOffset.Now};
 
         public DirectoryRepository(ISession session)
         {
@@ -25,13 +27,16 @@ namespace CassandraFS
             directoriesTableEvent
                 .Where(entry => entry.Path.Equals(path))
                 .Execute()
-                .Select(dir => new DirectoryEntry(dir.Name));
+                .Select(dir => new DirectoryEntry(dir.Name) { Stat = GetDirectoryModel(dir).GetStat() });
 
         public bool IsDirectoriesExists(string directoryPath) =>
             directoriesTableEvent
                 .Where(f => f.Path == directoryPath)
                 .Execute()
                 .Any();
+
+        public void WriteDirectory(DirectoryModel directory)
+           => directoriesTableEvent.Insert(GetCQLDirectory(directory)).Execute();
 
         public DirectoryModel ReadDirectory(string path)
         {
@@ -45,13 +50,8 @@ namespace CassandraFS
             var dir = directoriesTableEvent
                       .FirstOrDefault(d => d.Path.Equals(parentDirPath) && d.Name.Equals(dirName))
                       .Execute();
-            return dir == null ? null : new DirectoryModel {Path = dir.Path, Name = dir.Name};
-        }
-
-        public void WriteDirectory(DirectoryModel directory)
-        {
-            var dir = new CQLDirectory {Path = directory.Path, Name = directory.Name};
-            directoriesTableEvent.Insert(dir).Execute();
+            
+            return dir == null ? null : GetDirectoryModel(dir);
         }
 
         public void DeleteDirectory(string path)
@@ -66,7 +66,7 @@ namespace CassandraFS
 
         public bool IsDirectoryExists(string path)
         {
-            if (path.Equals("/"))
+            if (path.Equals("/") || path.Equals("."))
             {
                 return true;
             }
@@ -79,5 +79,25 @@ namespace CassandraFS
             var result = dir.Any();
             return result;
         }
+
+        private DirectoryModel GetDirectoryModel(CQLDirectory directory) => new DirectoryModel
+        {
+            Path = directory.Path,
+            Name = directory.Name,
+            FilePermissions = (FilePermissions)directory.FilePermissions,
+            GID = (uint)directory.GID,
+            UID = (uint)directory.UID,
+            ModifiedTimestamp = directory.ModifiedTimestamp
+        };
+
+        private CQLDirectory GetCQLDirectory(DirectoryModel directory) => new CQLDirectory
+        {
+            Path = directory.Path,
+            Name = directory.Name,
+            FilePermissions = (int)directory.FilePermissions,
+            GID = directory.GID,
+            UID = directory.UID,
+            ModifiedTimestamp = directory.ModifiedTimestamp
+        };
     }
 }

@@ -9,7 +9,7 @@ namespace CassandraFS
     {
         [PartitionKey(0)]
         [Column("guid")]
-        public Guid GUID { get; set; }
+        public Guid? GUID { get; set; }
 
         [ClusteringKey(0)]
         [Column("data")]

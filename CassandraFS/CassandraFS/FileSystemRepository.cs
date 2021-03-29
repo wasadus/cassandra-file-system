@@ -20,6 +20,14 @@ namespace CassandraFS
             this.fileRepository = fileRepository;
         }
 
+        public List<DirectoryEntry> ReadDirectoryContent(string path) =>
+            directoryRepository.ReadDirectoryContent(path)
+                               .Concat(fileRepository.ReadDirectoryContent(path))
+                               .ToList();
+
+        public bool IsDirectoryEmpty(string path)
+            => !(fileRepository.IsFilesExists(path) || directoryRepository.IsDirectoriesExists(path));
+
         public static string GetParentDirectory(string path)
         {
             path = Path.TrimEndingDirectorySeparator(path);
@@ -38,20 +46,12 @@ namespace CassandraFS
             return Path.GetFileName(path);
         }
 
-        public List<DirectoryEntry> ReadDirectoryContent(string path) =>
-            directoryRepository.ReadDirectoryContent(path)
-                               .Concat(fileRepository.ReadDirectoryContent(path))
-                               .ToList();
-
-        public bool IsDirectoryEmpty(string path) => !(fileRepository.IsFilesExists(path) || directoryRepository.IsDirectoriesExists(path));
-
         public Errno TryReadDirectory(string path, out DirectoryModel directory)
         {
-            var parentDirPath = GetParentDirectory(path);
             directory = null;
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
+            if (!IsDirectoryValid(GetParentDirectory(path), out var error))
             {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
 
             if (fileRepository.IsFileExists(path))
@@ -60,12 +60,7 @@ namespace CassandraFS
             }
 
             directory = directoryRepository.ReadDirectory(path);
-            if (directory == null)
-            {
-                return Errno.ENOENT;
-            }
-
-            return 0;
+            return directory == null ? Errno.ENOENT : 0;
         }
 
         public Errno TryWriteDirectory(string path, FilePermissions mode)
@@ -73,9 +68,9 @@ namespace CassandraFS
             var dirName = GetFileName(path);
             var parentDirPath = GetParentDirectory(path);
 
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
+            if (!IsDirectoryValid(parentDirPath, out var error))
             {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
 
             if (directoryRepository.IsDirectoryExists(path))
@@ -83,15 +78,20 @@ namespace CassandraFS
                 return Errno.EEXIST;
             }
 
-            directoryRepository.WriteDirectory(new DirectoryModel {Path = parentDirPath, Name = dirName});
+            var uid = Syscall.getuid();
+            var gid = Syscall.getgid();
+            directoryRepository.WriteDirectory(new DirectoryModel
+                {
+                    Path = parentDirPath, Name = dirName, FilePermissions = mode, UID = uid, GID = gid, ModifiedTimestamp = DateTimeOffset.Now
+                });
             return 0;
         }
 
         public Errno TryDeleteDirectory(string path)
         {
-            if (!directoryRepository.IsDirectoryExists(path))
+            if (!IsDirectoryValid(path, out var error))
             {
-                return fileRepository.IsFileExists(path) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
 
             if (!IsDirectoryEmpty(path))
@@ -123,22 +123,30 @@ namespace CassandraFS
             }
 
             // TODO Возможно надо файлы тоже перенести?
-            directoryRepository.DeleteDirectory(from);
             var parentDirPath = GetParentDirectory(to);
             var dirName = GetFileName(to);
-            directoryRepository.WriteDirectory(new DirectoryModel {Path = parentDirPath, Name = dirName});
+            directoryRepository.WriteDirectory(new DirectoryModel
+                {
+                    Path = parentDirPath,
+                    Name = dirName,
+                    FilePermissions = directory.FilePermissions,
+                    UID = directory.UID,
+                    GID = directory.GID,
+                    ModifiedTimestamp = DateTimeOffset.Now
+                });
+            directoryRepository.DeleteDirectory(from);
             return 0;
         }
 
         public Errno TryReadFile(string path, OpenFlags flags, out FileModel file)
         {
-            // TODO O_APPEND, O_TRUNC
+            // O_APPEND not implemented
             var fileName = GetFileName(path);
             var parentDirPath = GetParentDirectory(path);
             file = null;
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
+            if (!IsDirectoryValid(parentDirPath, out var error))
             {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
 
             if (directoryRepository.IsDirectoryExists(path))
@@ -154,14 +162,26 @@ namespace CassandraFS
 
             if (file != null)
             {
+                if ((flags & OpenFlags.O_TRUNC) != 0)
+                {
+                    file.Data = new byte[0];
+                }
                 return 0;
             }
 
             var now = DateTimeOffset.Now;
+            var euid = Syscall.geteuid();
+            var egid = Syscall.getegid();
             file = new FileModel
                 {
-                    Path = parentDirPath, Name = fileName, Data = new byte[0], ModifiedTimestamp = now,
-                    ExtendedAttributes = new ExtendedAttributes()
+                    Path = parentDirPath,
+                    Name = fileName,
+                    Data = new byte[0],
+                    ModifiedTimestamp = now,
+                    ExtendedAttributes = new ExtendedAttributes(),
+                    FilePermissions = FilePermissions.ACCESSPERMS | FilePermissions.S_IFREG,
+                    GID = egid,
+                    UID = euid,
                 };
             fileRepository.WriteFile(file);
             return 0;
@@ -178,9 +198,9 @@ namespace CassandraFS
             var fileName = GetFileName(path);
             var parentDirPath = GetParentDirectory(path);
 
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
+            if (!IsDirectoryValid(parentDirPath, out var error))
             {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
 
             if (fileRepository.IsFileExists(path))
@@ -189,10 +209,18 @@ namespace CassandraFS
             }
 
             var now = DateTimeOffset.Now;
+            var uid = Syscall.getuid();
+            var gid = Syscall.getgid();
             var file = new FileModel
                 {
-                    Path = parentDirPath, Name = fileName, Data = new byte[0],
-                    ExtendedAttributes = new ExtendedAttributes(), ModifiedTimestamp = now
+                    Path = parentDirPath,
+                    Name = fileName,
+                    Data = new byte[0],
+                    ExtendedAttributes = new ExtendedAttributes(),
+                    ModifiedTimestamp = now,
+                    FilePermissions = mode,
+                    GID = gid,
+                    UID = uid,
                 };
             fileRepository.WriteFile(file);
             return 0;
@@ -200,10 +228,9 @@ namespace CassandraFS
 
         public Errno TryDeleteFile(string path)
         {
-            var parentDirPath = GetParentDirectory(path);
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
+            if (!IsDirectoryValid(GetParentDirectory(path), out var error))
             {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
 
             if (!fileRepository.IsFileExists(path))
@@ -234,7 +261,6 @@ namespace CassandraFS
             }
 
             fileRepository.DeleteFile(from);
-
             var parentDirPath = GetParentDirectory(to);
             var fileName = GetFileName(to);
             file.Name = fileName;
@@ -326,42 +352,81 @@ namespace CassandraFS
 
         public Errno TryGetPathStatus(string path, out Stat buffer)
         {
-            var parentDirPath = GetParentDirectory(path);
-            buffer = new Stat {st_nlink = 1};
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
+            buffer = new Stat();
+            var error = TryGetFileSystemEntry(path, out var entry);
+            if (error != 0)
             {
-                buffer.st_nlink = 0;
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
-
-            if (!directoryRepository.IsDirectoryExists(path))
-            {
-                var error = TryReadFile(path, 0, out var file);
-                if (error != 0)
-                {
-                    buffer.st_nlink = 0;
-                    return error;
-                }
-
-                buffer.st_mode = FilePermissions.S_IFREG | FilePermissions.ACCESSPERMS;
-                buffer.st_size = file.Data?.LongLength ?? 0;
-                buffer.st_blocks = file.Data?.LongLength / 512 ?? 0;
-                buffer.st_blksize = buffer.st_size; // Optimal size for buffer in I/O operations
-                buffer.st_atim = DateTimeOffset.Now.ToTimespec(); // access
-                buffer.st_mtim = file.ModifiedTimestamp.ToTimespec(); // modified
-                return 0;
-            }
-            buffer.st_mode = FilePermissions.S_IFDIR | FilePermissions.ACCESSPERMS;
+            buffer = entry.GetStat();
             return 0;
+        }
+
+        public Errno TryChangePathPermissions(string path, FilePermissions permissions)
+        {
+            var error = TryGetFileSystemEntry(path, out var entry);
+            if (error != 0)
+            {
+                return error;
+            }
+
+            var euid = Syscall.geteuid();
+            if (euid != 0 && entry.UID != euid)
+            {
+                return Errno.EPERM;
+            }
+
+            WriteFileSystemEntry(entry);
+            return 0;
+        }
+
+        public Errno TryChangePathOwner(string path, uint newUID, uint newGID)
+        {
+            var error = TryGetFileSystemEntry(path, out var entry);
+            if (error != 0)
+            {
+                return error;
+            }
+
+            if (!entry.IsChownPermissionsOk(newUID, newGID))
+            {
+                return Errno.EPERM;
+            }
+            entry.UID = newUID;
+            entry.GID = newGID;
+
+            WriteFileSystemEntry(entry);
+            return 0;
+        }
+
+        public Errno TryGetAccessToPath(string path, AccessModes mode)
+        {
+            var error = TryGetFileSystemEntry(path, out var entry);
+            if (error != 0)
+            {
+                return error;
+            }
+
+            var permissions = entry.FilePermissions;
+            var fileUID = entry.UID;
+            var fileGID = entry.GID;
+
+            var userUID = Syscall.getuid();
+            var userGID = Syscall.getgid();
+            return ((AccessModes.R_OK & mode) != 0 && !permissions.CanUserRead(userUID, userGID, fileUID, fileGID))
+                   || ((AccessModes.W_OK & mode) != 0 && !permissions.CanUserWrite(userUID, userGID, fileUID, fileGID))
+                   || ((AccessModes.X_OK & mode) != 0 && !permissions.CanUserExecute(userUID, userGID, fileUID, fileGID))
+                       ? Errno.EACCES
+                       : 0;
         }
 
         public Errno TryGetFileSystemStatus(string path, out Statvfs buffer)
         {
-            var parentDirPath = GetParentDirectory(path);
             buffer = new Statvfs();
-            if (!directoryRepository.IsDirectoryExists(parentDirPath))
+            var error = TryGetFileSystemEntry(path, out var _);
+            if (error != 0)
             {
-                return fileRepository.IsFileExists(parentDirPath) ? Errno.ENOTDIR : Errno.ENOENT;
+                return error;
             }
 
             buffer.f_bsize = 4096;
@@ -375,19 +440,57 @@ namespace CassandraFS
             buffer.f_fsid = 1;
             buffer.f_namemax = 255;
 
-            if (directoryRepository.IsDirectoryExists(path))
+            return 0;
+        }
+
+        // TODO Может сделать bool и out Errno?
+        private Errno TryGetFileSystemEntry(string path, out IFileSystemEntry entry)
+        {
+            entry = null;
+            if (IsDirectoryValid(GetParentDirectory(path), out var error))
             {
-                return 0;
+                return error;
             }
 
-            var error = TryReadFile(path, 0, out var file);
+            error = TryReadFile(path, 0, out var file);
             if (error == 0)
             {
+                entry = file;
                 return 0;
             }
-
-            buffer = new Statvfs();
+            error = TryReadDirectory(path, out var dir);
+            if (error == 0)
+            {
+                entry = dir;
+                return 0;
+            }
             return error;
+        }
+
+        private void WriteFileSystemEntry(IFileSystemEntry entry)
+        {
+            switch (entry)
+            {
+            case FileModel _:
+                fileRepository.WriteFile(entry as FileModel);
+                return;
+            case DirectoryModel _:
+                directoryRepository.WriteDirectory(entry as DirectoryModel);
+                return;
+            default:
+                throw new NotImplementedException($"Unsupported FileSystemEntry type: {entry}");
+            }
+        }
+
+        private bool IsDirectoryValid(string directory, out Errno error)
+        {
+            error = 0;
+            if (!directoryRepository.IsDirectoryExists(directory))
+            {
+                error = fileRepository.IsFileExists(directory) ? Errno.ENOTDIR : Errno.ENOENT;
+                return false;
+            }
+            return true;
         }
     }
 }
