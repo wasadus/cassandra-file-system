@@ -81,9 +81,9 @@ namespace CassandraFS
             var uid = Syscall.getuid();
             var gid = Syscall.getgid();
             directoryRepository.WriteDirectory(new DirectoryModel
-            {
-                Path = parentDirPath, Name = dirName, FilePermissions = mode, UID = uid, GID = gid, ModifiedTimestamp = DateTimeOffset.Now
-            });
+                {
+                    Path = parentDirPath, Name = dirName, FilePermissions = mode, UID = uid, GID = gid, ModifiedTimestamp = DateTimeOffset.Now
+                });
             return 0;
         }
 
@@ -125,7 +125,15 @@ namespace CassandraFS
             // TODO Возможно надо файлы тоже перенести?
             var parentDirPath = GetParentDirectory(to);
             var dirName = GetFileName(to);
-            directoryRepository.WriteDirectory(new DirectoryModel { Path = parentDirPath, Name = dirName, FilePermissions = directory.FilePermissions, UID = directory.UID, GID = directory.GID, ModifiedTimestamp = DateTimeOffset.Now });
+            directoryRepository.WriteDirectory(new DirectoryModel
+                {
+                    Path = parentDirPath,
+                    Name = dirName,
+                    FilePermissions = directory.FilePermissions,
+                    UID = directory.UID,
+                    GID = directory.GID,
+                    ModifiedTimestamp = DateTimeOffset.Now
+                });
             directoryRepository.DeleteDirectory(from);
             return 0;
         }
@@ -166,10 +174,14 @@ namespace CassandraFS
             var egid = Syscall.getegid();
             file = new FileModel
                 {
-                    Path = parentDirPath, Name = fileName, Data = new byte[0], ModifiedTimestamp = now,
+                    Path = parentDirPath,
+                    Name = fileName,
+                    Data = new byte[0],
+                    ModifiedTimestamp = now,
                     ExtendedAttributes = new ExtendedAttributes(),
                     FilePermissions = FilePermissions.ACCESSPERMS | FilePermissions.S_IFREG,
-                    GID = egid, UID = euid, ContentGUID = null
+                    GID = egid,
+                    UID = euid,
                 };
             fileRepository.WriteFile(file);
             return 0;
@@ -201,9 +213,14 @@ namespace CassandraFS
             var gid = Syscall.getgid();
             var file = new FileModel
                 {
-                    Path = parentDirPath, Name = fileName, Data = new byte[0],
-                    ExtendedAttributes = new ExtendedAttributes(), ModifiedTimestamp = now,
-                    FilePermissions = mode, GID = gid, UID = uid, ContentGUID = null
+                    Path = parentDirPath,
+                    Name = fileName,
+                    Data = new byte[0],
+                    ExtendedAttributes = new ExtendedAttributes(),
+                    ModifiedTimestamp = now,
+                    FilePermissions = mode,
+                    GID = gid,
+                    UID = uid,
                 };
             fileRepository.WriteFile(file);
             return 0;
@@ -371,7 +388,7 @@ namespace CassandraFS
                 return error;
             }
 
-            if (!IsChownPermissionsOk(entry, newUID, newGID))
+            if (!entry.IsChownPermissionsOk(newUID, newGID))
             {
                 return Errno.EPERM;
             }
@@ -396,11 +413,11 @@ namespace CassandraFS
 
             var userUID = Syscall.getuid();
             var userGID = Syscall.getgid();
-            return ((AccessModes.R_OK & mode) != 0 && !CanUserRead(permissions, userUID, userGID, fileUID, fileGID))
-                || ((AccessModes.W_OK & mode) != 0 && !CanUserWrite(permissions, userUID, userGID, fileUID, fileGID))
-                || ((AccessModes.X_OK & mode) != 0 && !CanUserExecute(permissions, userUID, userGID, fileUID, fileGID))
-                ? Errno.EACCES
-                : 0;
+            return ((AccessModes.R_OK & mode) != 0 && !permissions.CanUserRead(userUID, userGID, fileUID, fileGID))
+                   || ((AccessModes.W_OK & mode) != 0 && !permissions.CanUserWrite(userUID, userGID, fileUID, fileGID))
+                   || ((AccessModes.X_OK & mode) != 0 && !permissions.CanUserExecute(userUID, userGID, fileUID, fileGID))
+                       ? Errno.EACCES
+                       : 0;
         }
 
         public Errno TryGetFileSystemStatus(string path, out Statvfs buffer)
@@ -411,7 +428,7 @@ namespace CassandraFS
             {
                 return error;
             }
-            
+
             buffer.f_bsize = 4096;
             buffer.f_frsize = 4096;
             buffer.f_blocks = 1; // just not zero
@@ -450,42 +467,18 @@ namespace CassandraFS
             return error;
         }
 
-        private bool CanUserRead(FilePermissions permissions, uint userUID, uint userGID, uint fileUID, uint fileGID) =>
-            userUID == 0
-                || (userUID == fileUID && (permissions & FilePermissions.S_IRUSR) != 0)
-                || (userGID == fileGID && (permissions & FilePermissions.S_IRGRP) != 0)
-                || (permissions & FilePermissions.S_IROTH) != 0;
-
-        private bool CanUserWrite(FilePermissions permissions, uint userUID, uint userGID, uint fileUID, uint fileGID) =>
-            userUID == 0
-                || (userUID == fileUID && (permissions & FilePermissions.S_IWUSR) != 0)
-                || (userGID == fileGID && (permissions & FilePermissions.S_IWGRP) != 0)
-                || (permissions & FilePermissions.S_IWOTH) != 0;
-
-        private bool CanUserExecute(FilePermissions permissions, uint userUID, uint userGID, uint fileUID, uint fileGID) =>
-            userUID == 0
-                || (userUID == fileUID && (permissions & FilePermissions.S_IXUSR) != 0)
-                || (userGID == fileGID && (permissions & FilePermissions.S_IXGRP) != 0)
-                || (permissions & FilePermissions.S_IXOTH) != 0;
-
-        private bool IsChownPermissionsOk(IFileSystemEntry entry, uint newUID, uint newGID)
-        {
-            var userUID = Syscall.getuid();
-            return userUID == 0 || (entry.UID == newUID && (entry.GID == newGID || userUID == entry.UID));
-        }
-
         private void WriteFileSystemEntry(IFileSystemEntry entry)
         {
             switch (entry)
             {
-                case FileModel _:
-                    fileRepository.WriteFile(entry as FileModel);
-                    return;
-                case DirectoryModel _:
-                    directoryRepository.WriteDirectory(entry as DirectoryModel);
-                    return;
-                default:
-                    throw new NotImplementedException($"Unsupported FileSystemEntry type: {entry}");
+            case FileModel _:
+                fileRepository.WriteFile(entry as FileModel);
+                return;
+            case DirectoryModel _:
+                directoryRepository.WriteDirectory(entry as DirectoryModel);
+                return;
+            default:
+                throw new NotImplementedException($"Unsupported FileSystemEntry type: {entry}");
             }
         }
 
@@ -494,7 +487,7 @@ namespace CassandraFS
             error = 0;
             if (!directoryRepository.IsDirectoryExists(directory))
             {
-                error =  fileRepository.IsFileExists(directory) ? Errno.ENOTDIR : Errno.ENOENT;
+                error = fileRepository.IsFileExists(directory) ? Errno.ENOTDIR : Errno.ENOENT;
                 return false;
             }
             return true;

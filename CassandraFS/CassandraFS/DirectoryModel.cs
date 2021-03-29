@@ -15,7 +15,7 @@ namespace CassandraFS
         public Stat GetStat() => new Stat()
         {
             st_atim = DateTimeOffset.Now.ToTimespec(),
-            st_mtim = ModifiedTimestamp.ToTimespec()),
+            st_mtim = ModifiedTimestamp.ToTimespec(),
             st_gid = GID,
             st_uid = UID,
             st_mode = FilePermissions,
