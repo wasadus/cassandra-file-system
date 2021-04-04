@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace CassandraFS
+namespace CassandraFS.Models
 {
     public class ExtendedAttributes
     {

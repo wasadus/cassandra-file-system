@@ -271,7 +271,7 @@ namespace CassandraFS
 
         protected override Errno OnChangePathTimes(string path, ref Utimbuf buf)
         {
-            //Syscall.utime; TODO Надо ли?
+            //Syscall.utime
             logger.Info($"OnChangePathTimes({path}, {buf})...");
             var error = OnGetPathStatus(path, out _);
             logger.Info($"OnChangePathTimes({path}, {buf}) -> {error}");

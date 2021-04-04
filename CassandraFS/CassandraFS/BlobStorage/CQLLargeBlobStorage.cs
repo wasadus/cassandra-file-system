@@ -5,10 +5,10 @@ using System.Linq;
 
 using Cassandra;
 using Cassandra.Data.Linq;
-
+using CassandraFS.CassandraHandler;
 using MoreLinq;
 
-namespace CassandraFS
+namespace CassandraFS.BlobStorage
 {
     public class CqlLargeBlobStorage<TBlobMeta, TBlobChunk>
         where TBlobMeta : CQLLargeBlobMeta, new()

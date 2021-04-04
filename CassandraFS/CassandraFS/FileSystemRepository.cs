@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-
+using CassandraFS.CassandraHandler;
+using CassandraFS.Models;
 using Mono.Fuse.NETStandard;
 using Mono.Unix.Native;
 

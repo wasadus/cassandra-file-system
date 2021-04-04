@@ -10,8 +10,9 @@ using Cassandra;
 using Mono.Fuse.NETStandard;
 using Mono.Unix.Native;
 using System;
+using CassandraFS.Models;
 
-namespace CassandraFS
+namespace CassandraFS.CassandraHandler
 {
     public class DirectoryRepository
     {

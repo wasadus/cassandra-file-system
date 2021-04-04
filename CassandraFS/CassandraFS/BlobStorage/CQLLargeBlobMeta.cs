@@ -2,8 +2,7 @@
 
 using Cassandra.Mapping.Attributes;
 
-// TODO namespace.BlobStorage. Может нам поделить проект на неймспейсы?
-namespace CassandraFS
+namespace CassandraFS.BlobStorage
 {
     public abstract class CQLLargeBlobMeta
     {

@@ -2,7 +2,7 @@
 using Cassandra.Mapping.Attributes;
 using System;
 
-namespace CassandraFS
+namespace CassandraFS.BlobStorage
 {
     public abstract class CQLLargeBlobChunk
     {
