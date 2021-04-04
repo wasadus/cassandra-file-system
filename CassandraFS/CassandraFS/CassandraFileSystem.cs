@@ -38,9 +38,10 @@ namespace CassandraFS
             logger.Info($"OnGetPathStatus({path})...");
             try
             {
-                var error = fileSystemRepository.TryGetPathStatus(path, out buf);
-                logger.Info($"OnGetPathStatus({path}, {buf}) -> {error}, {buf.st_mode}, {buf.st_uid}");
-                return error;
+                var stat = fileSystemRepository.GetPathStatus(path);
+                buf = stat.Value;
+                logger.Info($"OnGetPathStatus({path}, {buf}) -> {stat.ErrorType}, {buf.st_mode}, {buf.st_uid}");
+                return ToErrno(stat.ErrorType);
             }
             catch (Exception e)
             {
@@ -55,9 +56,9 @@ namespace CassandraFS
             logger.Info($"OnAccessPath({path}, {mask})...");
             try
             {
-                var error = fileSystemRepository.TryGetAccessToPath(path, mask);
-                logger.Info($"OnAccessPath({path}, {mask}) -> {error}");
-                return error;
+                var error = fileSystemRepository.GetAccessToPath(path, mask);
+                logger.Info($"OnAccessPath({path}, {mask}) -> {error.ErrorType}");
+                return ToErrno(error.ErrorType);
             }
             catch (Exception e)
             {
@@ -101,9 +102,9 @@ namespace CassandraFS
             try
             {
                 mode |= FilePermissions.S_IFREG;
-                var error = fileSystemRepository.TryCreateFile(path, mode, rdev);
-                logger.Info($"OnCreateSpecialFile({path}, {mode}, {rdev}) -> {error}");
-                return error;
+                var error = fileSystemRepository.CreateFile(path, mode, rdev);
+                logger.Info($"OnCreateSpecialFile({path}, {mode}, {rdev}) -> {error.ErrorType}");
+                return ToErrno(error.ErrorType);
             }
             catch (Exception e)
             {
@@ -117,9 +118,9 @@ namespace CassandraFS
             logger.Info($"OnCreateDirectory({path}, {mode})...");
             try
             {
-                var error = fileSystemRepository.TryWriteDirectory(path, mode);
-                logger.Info($"OnCreateDirectory({path}, {mode}) -> {error}");
-                return error;
+                var error = fileSystemRepository.WriteDirectory(path, mode);
+                logger.Info($"OnCreateDirectory({path}, {mode}) -> {error.ErrorType}");
+                return ToErrno(error.ErrorType);
             }
             catch (Exception e)
             {
@@ -133,9 +134,9 @@ namespace CassandraFS
             logger.Info($"OnRemoveFile({path})...");
             try
             {
-                var error = fileSystemRepository.TryDeleteFile(path);
-                logger.Info($"OnRemoveFile({path}) -> {error}");
-                return error;
+                var error = fileSystemRepository.DeleteFile(path);
+                logger.Info($"OnRemoveFile({path}) -> {error.ErrorType}");
+                return ToErrno(error.ErrorType);
             }
             catch (Exception e)
             {
@@ -149,9 +150,9 @@ namespace CassandraFS
             logger.Info($"OnRemoveDirectory({path})...");
             try
             {
-                var error = fileSystemRepository.TryDeleteDirectory(path);
-                logger.Info($"OnRemoveDirectory({path}) -> {error}");
-                return error;
+                var error = fileSystemRepository.DeleteDirectory(path);
+                logger.Info($"OnRemoveDirectory({path}) -> {error.ErrorType}");
+                return ToErrno(error.ErrorType);
             }
             catch (Exception e)
             {
@@ -179,22 +180,22 @@ namespace CassandraFS
 
             try
             {
-                var error = fileSystemRepository.TryRenameFile(from, to);
-                if (error == 0)
+                var result = fileSystemRepository.RenameFile(from, to);
+                if (result.IsSuccessful())
                 {
                     logger.Info($"OnRenamePath({from}, {to}) -> 0");
                     return 0;
                 }
 
-                error = fileSystemRepository.TryRenameDirectory(from, to);
-                if (error == 0)
+                result = fileSystemRepository.RenameDirectory(from, to);
+                if (result.IsSuccessful())
                 {
                     logger.Info($"OnRenamePath({from}, {to}) -> 0");
                     return 0;
                 }
 
-                logger.Info($"OnRenamePath({from}, {to}) -> {error}");
-                return error;
+                logger.Info($"OnRenamePath({from}, {to}) -> {result.ErrorType}");
+                return ToErrno(result.ErrorType);
             }
             catch (Exception e)
             {
@@ -216,9 +217,9 @@ namespace CassandraFS
             logger.Info($"OnChangePathPermissions({path}, {mode})...");
             try
             {
-                var error = fileSystemRepository.TryChangePathPermissions(path, mode);
-                logger.Info($"OnChangePathPermissions({path}, {mode}) -> {error}");
-                return error;
+                var error = fileSystemRepository.ChangePathPermissions(path, mode);
+                logger.Info($"OnChangePathPermissions({path}, {mode}) -> {error.ErrorType}");
+                return ToErrno(error.ErrorType);
             }
             catch (Exception e)
             {
@@ -232,9 +233,9 @@ namespace CassandraFS
             logger.Info($"OnChangePathOwner({path}, {uid}, {gid})...");
             try
             {
-                var error = fileSystemRepository.TryChangePathOwner(path, (uint)uid, (uint)gid);
-                logger.Info($"OnChangePathOwner({path}, {uid}, {gid}) -> {error}");
-                return error;
+                var error = fileSystemRepository.ChangePathOwner(path, (uint)uid, (uint)gid);
+                logger.Info($"OnChangePathOwner({path}, {uid}, {gid}) -> {error.ErrorType}");
+                return ToErrno(error.ErrorType);
             }
             catch (Exception e)
             {
@@ -248,18 +249,18 @@ namespace CassandraFS
             logger.Info($"OnTruncateFile()...");
             try
             {
-                var error = fileSystemRepository.TryReadFile(path, 0, out var file);
-                if (error != 0)
+                var file = fileSystemRepository.ReadFile(path, 0);
+                if (!file.IsSuccessful())
                 {
-                    logger.Info($"OnTruncateFile({path}, {size}) -> {error}");
-                    return error;
+                    logger.Info($"OnTruncateFile({path}, {size}) -> {file.ErrorType}");
+                    return ToErrno(file.ErrorType);
                 }
 
-                var truncatedData = file.Data;
+                var truncatedData = file.Value.Data;
                 Array.Resize(ref truncatedData, (int)size);
-                file.Data = truncatedData;
-                error = fileSystemRepository.TryWriteFile(file);
-                logger.Info($"OnTruncateFile({path}, {size}) -> {error}");
+                file.Value.Data = truncatedData;
+                fileSystemRepository.WriteFile(file.Value);
+                logger.Info($"OnTruncateFile({path}, {size}) -> {file.ErrorType}");
                 return 0;
             }
             catch (Exception e)
@@ -283,9 +284,9 @@ namespace CassandraFS
             logger.Info($"OnOpenHandle({path}, {info.OpenFlags})...");
             try
             {
-                var error = fileSystemRepository.TryReadFile(path, info.OpenFlags, out _);
-                logger.Info($"OnOpenHandle({path}, {info.OpenFlags}) -> {error}");
-                return error;
+                var file = fileSystemRepository.ReadFile(path, info.OpenFlags);
+                logger.Info($"OnOpenHandle({path}, {info.OpenFlags}) -> {file.ErrorType}");
+                return ToErrno(file.ErrorType);
             }
             catch (Exception e)
             {
@@ -305,18 +306,18 @@ namespace CassandraFS
             bytesRead = 0;
             try
             {
-                var error = fileSystemRepository.TryReadFile(path, info.OpenFlags, out var file);
-                if (error != 0)
+                var file = fileSystemRepository.ReadFile(path, info.OpenFlags);
+                if (!file.IsSuccessful())
                 {
-                    logger.Info($"OnReadHandle({path}, {info.OpenFlags}, {info.OpenAccess}, {offset}) -> {error}");
-                    return error;
+                    logger.Info($"OnReadHandle({path}, {info.OpenFlags}, {info.OpenAccess}, {offset}) -> {file.ErrorType}");
+                    return ToErrno(file.ErrorType);
                 }
 
-                using var data = file.Data.Length > 0 ? new MemoryStream(file.Data) : new MemoryStream();
+                using var data = file.Value.Data.Length > 0 ? new MemoryStream(file.Value.Data) : new MemoryStream();
                 data.Seek(offset, SeekOrigin.Begin);
                 bytesRead = data.Read(buf, 0, buf.Length);
                 logger.Info(
-                    $"OnReadHandle({path}, {info.OpenFlags}, {info.OpenAccess}, {offset}) -> {bytesRead}, {error}");
+                    $"OnReadHandle({path}, {info.OpenFlags}, {info.OpenAccess}, {offset}) -> {bytesRead}, {file.ErrorType}");
                 return 0;
             }
             catch (Exception e)
@@ -338,26 +339,26 @@ namespace CassandraFS
             bytesWritten = 0;
             try
             {
-                var error = fileSystemRepository.TryReadFile(path, info.OpenFlags, out var file);
-                if (error != 0)
+                var file = fileSystemRepository.ReadFile(path, info.OpenFlags);
+                if (!file.IsSuccessful())
                 {
-                    logger.Error($"OnWriteHandle({path}, {info.OpenAccess}, {info.OpenFlags}, {offset}) -> {error}");
-                    return error;
+                    logger.Error($"OnWriteHandle({path}, {info.OpenAccess}, {info.OpenFlags}, {offset}) -> {file.ErrorType}");
+                    return ToErrno(file.ErrorType);
                 }
 
                 using var dataStream = new MemoryStream();
-                if (file.Data.Length > 0)
+                if (file.Value.Data.Length > 0)
                 {
-                    dataStream.Write(file.Data, 0, file.Data.Length);
+                    dataStream.Write(file.Value.Data, 0, file.Value.Data.Length);
                 }
 
                 dataStream.Seek(offset, SeekOrigin.Begin);
                 dataStream.Write(buf, 0, buf.Length);
                 bytesWritten = buf.Length;
-                file.Data = dataStream.ToArray();
-                error = fileSystemRepository.TryWriteFile(file);
+                file.Value.Data = dataStream.ToArray();
+                fileSystemRepository.WriteFile(file.Value);
                 logger.Info(
-                    $"OnWriteHandle({path}, {info.OpenAccess}, {info.OpenFlags}, {offset}) -> {bytesWritten}, {error}");
+                    $"OnWriteHandle({path}, {info.OpenAccess}, {info.OpenFlags}, {offset}) -> {bytesWritten}, {file.ErrorType}");
                 return 0;
             }
             catch (Exception e)
@@ -374,9 +375,10 @@ namespace CassandraFS
             logger.Info($"OnGetFileSystemStatus()");
             try
             {
-                var error = fileSystemRepository.TryGetFileSystemStatus(path, out stbuf);
-                logger.Info($"OnGetFileSystemStatus({path}, {stbuf}) -> {error}");
-                return error;
+                var result = fileSystemRepository.GetFileSystemStatus(path);
+                stbuf = result.Value;
+                logger.Info($"OnGetFileSystemStatus({path}, {stbuf}) -> {result.ErrorType}");
+                return ToErrno(result.ErrorType);
             }
             catch (Exception e)
             {
@@ -403,9 +405,9 @@ namespace CassandraFS
             logger.Info($"OnSetPathExtendedAttribute({path}, {name}, {flags})...");
             try
             {
-                var error = fileSystemRepository.TrySetExtendedAttribute(path, name, value, flags);
-                logger.Info($"OnSetPathExtendedAttribute({path}, {name}, {flags}) -> {error}");
-                return error;
+                var error = fileSystemRepository.SetExtendedAttribute(path, name, value, flags);
+                logger.Info($"OnSetPathExtendedAttribute({path}, {name}, {flags}) -> {error.ErrorType}");
+                return ToErrno(error.ErrorType);
             }
             catch (Exception e)
             {
@@ -424,9 +426,10 @@ namespace CassandraFS
             logger.Info($"OnGetPathExtendedAttribute({path}, {name})...");
             try
             {
-                var error = fileSystemRepository.TryGetExtendedAttribute(path, name, value, out bytesWritten);
-                logger.Info($"OnGetPathExtendedAttribute({path}, {name}) -> {error}");
-                return error;
+                var result = fileSystemRepository.GetExtendedAttribute(path, name, value);
+                bytesWritten = result.Value;
+                logger.Info($"OnGetPathExtendedAttribute({path}, {name}) -> {result.ErrorType}");
+                return ToErrno(result.ErrorType);
             }
             catch (Exception e)
             {
@@ -442,9 +445,10 @@ namespace CassandraFS
             logger.Info($"OnListPathExtendedAttributes({path})...");
             try
             {
-                var error = fileSystemRepository.TryGetExtendedAttributesList(path, out names);
-                logger.Info($"OnListPathExtendedAttributes({path}) -> {error}");
-                return error;
+                var result = fileSystemRepository.GetExtendedAttributesList(path);
+                names = result.Value;
+                logger.Info($"OnListPathExtendedAttributes({path}) -> {result.ErrorType}");
+                return ToErrno(result.ErrorType);
             }
             catch (Exception e)
             {
@@ -457,12 +461,11 @@ namespace CassandraFS
         protected override Errno OnRemovePathExtendedAttribute(string path, string name)
         {
             logger.Info($"OnRemovePathExtendedAttribute({path}, {name})...");
-
             try
             {
-                var error = fileSystemRepository.TryRemoveExtendedAttribute(path, name);
-                logger.Info($"OnRemovePathExtendedAttribute({path}, {name}) -> {error}");
-                return error;
+                var error = fileSystemRepository.RemoveExtendedAttribute(path, name);
+                logger.Info($"OnRemovePathExtendedAttribute({path}, {name}) -> {error.ErrorType}");
+                return ToErrno(error.ErrorType);
             }
             catch (Exception e)
             {
@@ -478,5 +481,21 @@ namespace CassandraFS
             logger.Info($"OnLockHandle({path}, {info}, {cmd}, {@lock.l_type}) -> {error}");
             return error;
         }
+
+        private static Errno ToErrno(FileSystemError? error) => error switch
+        {
+            FileSystemError.IsDirectory => Errno.EISDIR,
+            FileSystemError.NotDirectory => Errno.ENOTDIR,
+            FileSystemError.NoEntry => Errno.ENOENT,
+            FileSystemError.AlreadyExist => Errno.EEXIST,
+            FileSystemError.DirectoryNotEmpty => Errno.ENOTEMPTY,
+            FileSystemError.InvalidArgument => Errno.EINVAL,
+            FileSystemError.NoAttribute => Errno.ENOATTR,
+            FileSystemError.OutOfRange => Errno.ERANGE,
+            FileSystemError.PermissionDenied => Errno.EPERM,
+            FileSystemError.AccessDenied => Errno.EACCES,
+            null => 0,
+            _ => throw new ArgumentOutOfRangeException(nameof(error), error, null)
+        };
     }
 }
