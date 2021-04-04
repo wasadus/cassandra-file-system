@@ -37,7 +37,7 @@ namespace CassandraFS.CassandraHandler
                 .Any();
 
         public void WriteDirectory(DirectoryModel directory)
-           => directoriesTableEvent.Insert(GetCQLDirectory(directory)).Execute();
+           => directoriesTableEvent.Insert(GetCQLDirectory(directory)).SetTimestamp(DateTimeOffset.Now).Execute();
 
         public DirectoryModel ReadDirectory(string path)
         {
@@ -62,6 +62,7 @@ namespace CassandraFS.CassandraHandler
             directoriesTableEvent
                 .Where(d => d.Path.Equals(parentDirPath) && d.Name.Equals(dirName))
                 .Delete()
+                .SetTimestamp(DateTimeOffset.Now)
                 .Execute();
         }
 

@@ -39,7 +39,18 @@ namespace CassandraFS.CassandraHandler
                 .Any();
 
         public void WriteFile(FileModel file)
-           => filesTableEvent.Insert(GetCQLFile(file)).SetTTL(TTL).Execute();
+        {
+            var cqlFile = GetCQLFile(file);
+            if (cqlFile.ContentGuid.HasValue)
+            {
+                blobStorage.Write(cqlFile.ContentGuid.Value.ToString(), file.Data, DateTimeOffset.Now, TimeSpan.FromSeconds(TTL));
+            }
+            else
+            {
+                RemoveFileContent(file.ContentGUID);
+            }
+            filesTableEvent.Insert(GetCQLFile(file)).SetTTL(TTL).SetTimestamp(DateTimeOffset.Now).Execute();
+        }
 
         public FileModel ReadFile(string path)
         {
@@ -48,7 +59,12 @@ namespace CassandraFS.CassandraHandler
             var file = filesTableEvent
                        .FirstOrDefault(f => f.Path.Equals(parentDirPath) && f.Name.Equals(fileName))
                        .Execute();
-            return GetFileModel(file);
+            var fileModel = GetFileModel(file);
+            if (file.ContentGuid.HasValue)
+            {
+                fileModel.Data = blobStorage.TryRead(file.ContentGuid.Value.ToString());
+            }
+            return fileModel;
         }
 
         public void DeleteFile(string path)
@@ -56,7 +72,8 @@ namespace CassandraFS.CassandraHandler
             var fileName = FileSystemRepository.GetFileName(path);
             var parentDirPath = FileSystemRepository.GetParentDirectory(path);
             var file = filesTableEvent
-                       .FirstOrDefault(d => d.Path.Equals(parentDirPath) && d.Name.Equals(fileName)).Execute();
+                       .FirstOrDefault(d => d.Path.Equals(parentDirPath) && d.Name.Equals(fileName))
+                       .Execute();
             if (file.ContentGuid.HasValue)
             {
                 blobStorage.TryDelete(file.ContentGuid.ToString(), DateTimeOffset.Now);
@@ -65,6 +82,7 @@ namespace CassandraFS.CassandraHandler
             filesTableEvent
                 .Where(d => d.Path.Equals(parentDirPath) && d.Name.Equals(fileName))
                 .Delete()
+                .SetTimestamp(DateTimeOffset.Now)
                 .Execute();
         }
 
@@ -100,11 +118,6 @@ namespace CassandraFS.CassandraHandler
                 return null;
             }
 
-            if (file.ContentGuid != null)
-            {
-                file.Data = blobStorage.TryRead(file.ContentGuid.ToString());
-            }
-
             return new FileModel
             {
                 Path = file.Path,
@@ -134,13 +147,10 @@ namespace CassandraFS.CassandraHandler
             };
             if (file.Data.Length > dataBufferSize)
             {
-                var guid = file.ContentGUID ?? Guid.NewGuid();
-                cqlFile.ContentGuid = guid;
-                blobStorage.Write(guid.ToString(), file.Data, DateTimeOffset.Now, TimeSpan.FromSeconds(TTL));
+                cqlFile.ContentGuid = file.ContentGUID ?? Guid.NewGuid();
             }
             else
             {
-                RemoveFileContent(file.ContentGUID);
                 cqlFile.Data = file.Data;
             }
             return cqlFile;
