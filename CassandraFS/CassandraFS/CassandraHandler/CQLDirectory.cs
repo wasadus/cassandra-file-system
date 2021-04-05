@@ -1,7 +1,7 @@
 ﻿using Cassandra.Mapping.Attributes;
 using System;
 
-namespace CassandraFS
+namespace CassandraFS.CassandraHandler
 {
     [Table(Name = "Directories", Keyspace = "FTPMessageSpace", CaseSensitive = true)]
     public class CQLDirectory

@@ -10,8 +10,9 @@ using Cassandra;
 using Mono.Fuse.NETStandard;
 using Mono.Unix.Native;
 using System;
+using CassandraFS.Models;
 
-namespace CassandraFS
+namespace CassandraFS.CassandraHandler
 {
     public class DirectoryRepository
     {
@@ -36,7 +37,7 @@ namespace CassandraFS
                 .Any();
 
         public void WriteDirectory(DirectoryModel directory)
-           => directoriesTableEvent.Insert(GetCQLDirectory(directory)).Execute();
+           => directoriesTableEvent.Insert(GetCQLDirectory(directory)).SetTimestamp(DateTimeOffset.Now).Execute();
 
         public DirectoryModel ReadDirectory(string path)
         {
@@ -51,7 +52,7 @@ namespace CassandraFS
                       .FirstOrDefault(d => d.Path.Equals(parentDirPath) && d.Name.Equals(dirName))
                       .Execute();
             
-            return dir == null ? null : GetDirectoryModel(dir);
+            return GetDirectoryModel(dir);
         }
 
         public void DeleteDirectory(string path)
@@ -61,6 +62,7 @@ namespace CassandraFS
             directoriesTableEvent
                 .Where(d => d.Path.Equals(parentDirPath) && d.Name.Equals(dirName))
                 .Delete()
+                .SetTimestamp(DateTimeOffset.Now)
                 .Execute();
         }
 
@@ -80,15 +82,18 @@ namespace CassandraFS
             return result;
         }
 
-        private DirectoryModel GetDirectoryModel(CQLDirectory directory) => new DirectoryModel
-        {
-            Path = directory.Path,
-            Name = directory.Name,
-            FilePermissions = (FilePermissions)directory.FilePermissions,
-            GID = (uint)directory.GID,
-            UID = (uint)directory.UID,
-            ModifiedTimestamp = directory.ModifiedTimestamp
-        };
+        private DirectoryModel GetDirectoryModel(CQLDirectory directory) =>
+            directory == null
+                ? null
+                : new DirectoryModel
+                {
+                    Path = directory.Path,
+                    Name = directory.Name,
+                    FilePermissions = (FilePermissions)directory.FilePermissions,
+                    GID = (uint)directory.GID,
+                    UID = (uint)directory.UID,
+                    ModifiedTimestamp = directory.ModifiedTimestamp
+                };
 
         private CQLDirectory GetCQLDirectory(DirectoryModel directory) => new CQLDirectory
         {

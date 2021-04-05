@@ -2,7 +2,7 @@
 
 using Mono.Unix.Native;
 
-namespace CassandraFS
+namespace CassandraFS.Models
 {
     public class FileModel : IFileSystemEntry
     {

@@ -7,9 +7,10 @@
   "MessageSpaceName": "FTPMessageSpace",
   "DropFilesTable": false,
   "DropFilesContentTable": false,
+  "DropFilesContentMetaTable": false,
   "DropDirectoriesTable": false,
   "ConnectionAttemptsCount": 5,
   "ReconnectTimeout": 5000,
-  "DefaultTTL": 0,
+  "DefaultTTL": null,
   "DefaultDataBufferSize": 2048
 }

@@ -1,4 +1,5 @@
-﻿using Mono.Unix.Native;
+﻿using CassandraFS.Models;
+using Mono.Unix.Native;
 
 namespace CassandraFS
 {

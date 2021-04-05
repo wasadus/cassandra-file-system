@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 using Mono.Fuse.NETStandard;
 using Mono.Unix.Native;
@@ -80,11 +81,10 @@ namespace CassandraFS
             try
             {
                 var rawNames = fileSystemRepository.ReadDirectoryContent(path);
-                // TODO Попробовать убрать
-                rawNames.Add(new DirectoryEntry("."));
-                rawNames.Add(new DirectoryEntry(".."));
+                rawNames.Add(new DirectoryEntry(".") {Stat = new Stat {st_mode = FilePermissions.S_IFDIR | FilePermissions.ACCESSPERMS}});
+                rawNames.Add(new DirectoryEntry("..") {Stat = new Stat {st_mode = FilePermissions.S_IFDIR | FilePermissions.ACCESSPERMS}});
                 paths = rawNames;
-                logger.Info($"OnReadDirectory({path}) -> 0, {string.Join(";", paths)}");
+                logger.Info($"OnReadDirectory({path}) -> 0, {string.Join(";", paths.Select(x => x.Name))}");
                 return 0;
             }
             catch (Exception e)
@@ -271,7 +271,7 @@ namespace CassandraFS
 
         protected override Errno OnChangePathTimes(string path, ref Utimbuf buf)
         {
-            //Syscall.utime; TODO Надо ли?
+            //Syscall.utime
             logger.Info($"OnChangePathTimes({path}, {buf})...");
             var error = OnGetPathStatus(path, out _);
             logger.Info($"OnChangePathTimes({path}, {buf}) -> {error}");

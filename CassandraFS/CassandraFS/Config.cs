@@ -8,6 +8,7 @@ namespace CassandraFS
         public string MessageSpaceName { get; set; }
         public bool DropFilesTable { get; set; }
         public bool DropFilesContentTable { get; set; }
+        public bool DropFilesContentMetaTable { get; set; }
         public bool DropDirectoriesTable { get; set; }
         public int ConnectionAttemptsCount { get; set; }
         public int ReconnectTimeout { get; set; }

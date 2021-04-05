@@ -1,4 +1,5 @@
-﻿using GroBuf;
+﻿using CassandraFS.Models;
+using GroBuf;
 using GroBuf.DataMembersExtracters;
 
 namespace CassandraFS

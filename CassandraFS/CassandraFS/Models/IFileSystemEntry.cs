@@ -1,7 +1,7 @@
 ﻿using Mono.Unix.Native;
 using System;
 
-namespace CassandraFS
+namespace CassandraFS.Models
 {
     public interface IFileSystemEntry
     {

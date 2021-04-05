@@ -2,7 +2,7 @@
 
 using Cassandra.Mapping.Attributes;
 
-namespace CassandraFS
+namespace CassandraFS.CassandraHandler
 {
     [Table(Name = "Files", Keyspace = "FTPMessageSpace", CaseSensitive = true)]
     public class CQLFile

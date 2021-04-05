@@ -65,6 +65,12 @@ namespace CassandraFS
                 session.Execute($"DROP TABLE IF EXISTS \"{config.MessageSpaceName}\".\"FilesContent\";");
             }
 
+            if (config.DropFilesContentMetaTable)
+            {
+                logger.Info("Dropping files content meta");
+                session.Execute($"DROP TABLE IF EXISTS \"{config.MessageSpaceName}\".\"FilesContentMeta\";");
+            }
+
             if (config.DropFilesTable)
             {
                 logger.Info("Dropping files");
@@ -97,9 +103,17 @@ namespace CassandraFS
             );
             session.Execute(
                 $"CREATE TABLE IF NOT EXISTS \"{config.MessageSpaceName}\".\"FilesContent\" (" +
-                "\"guid\" uuid, " +
-                "\"data\" blob, " +
-                "PRIMARY KEY(guid));"
+                "\"blob_version\" uuid, " +
+                "\"chunk_id\" smallint, " +
+                "\"chunk_bytes\" blob, " +
+                "PRIMARY KEY(blob_version));"
+            );
+            session.Execute(
+                $"CREATE TABLE IF NOT EXISTS \"{config.MessageSpaceName}\".\"FilesContentMeta\" (" +
+                "\"blob_id\" text, " +
+                "\"blob_version\" uuid, " +
+                "\"chunks_count\" smallint, " +
+                "PRIMARY KEY(blob_id));"
             );
             logger.Info("Creating tables...complete");
         }
