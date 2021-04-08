@@ -146,19 +146,18 @@ namespace CassandraFS
         public Result<FileModel> ReadFile(string path, OpenFlags flags)
         {
             // O_APPEND not implemented
-            file = null;
-            var error = CheckFileParentDirectory(path);
-            if (error != 0)
+            var directoryCheck = CheckFileParentDirectory(path);
+            if (!directoryCheck.IsSuccessful())
             {
                 return directoryCheck;
             }
 
-            file = fileRepository.ReadFile(path);
+            var file = fileRepository.ReadFile(path);
 
             switch (file == null)
             {
             case true when (flags & OpenFlags.O_CREAT) == 0:
-                return Errno.ENOENT;
+                return Result.Fail(FileSystemError.NoEntry);
             case true when (flags & OpenFlags.O_CREAT) != 0:
                 var fileName = GetFileName(path);
                 var parentDirPath = GetParentDirectory(path);
@@ -177,37 +176,30 @@ namespace CassandraFS
                         UID = euid,
                     };
                 fileRepository.WriteFile(file);
-                return 0;
+                return Result.Ok(file);
             case false when (flags & OpenFlags.O_TRUNC) != 0:
                 file.Data = new byte[0];
-                return 0;
+                return Result.Ok(file);
             default:
-                return 0;
+                return Result.Ok(file);
             }
         }
 
-        private Errno CheckFileParentDirectory(string path)
+        private Result CheckFileParentDirectory(string path)
         {
             var parentDirPath = GetParentDirectory(path);
-            if (!IsDirectoryValid(parentDirPath, out var error))
-            {
-                return error;
-            }
-
-            return directoryRepository.IsDirectoryExists(path) ? Errno.EISDIR : 0;
+            return IsDirectoryValid(parentDirPath)
+                .Then(() => directoryRepository.IsDirectoryExists(path) ? Result.Fail(FileSystemError.IsDirectory) : Result.Ok());
         }
 
-        public Errno TryReadFile(string path, out FileModel file)
+        public Result<FileModel> ReadFile(string path)
         {
-            file = null;
-            var error = CheckFileParentDirectory(path);
-            if (error != 0)
-            {
-                return error;
-            }
-
-            file = fileRepository.ReadFile(path);
-            return file == null ? Errno.ENOENT : 0;
+            return CheckFileParentDirectory(path)
+                .Then(() =>
+                {
+                    var file = fileRepository.ReadFile(path);
+                    return file == null ? Result.Fail(FileSystemError.NoEntry) : Result.Ok(file);
+                });
         }
 
         public void WriteFile(FileModel file)
