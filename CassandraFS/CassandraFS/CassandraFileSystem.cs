@@ -248,7 +248,7 @@ namespace CassandraFS
             logger.Info($"OnTruncateFile()...");
             try
             {
-                var error = fileSystemRepository.TryReadFile(path, 0, out var file);
+                var error = fileSystemRepository.TryReadFile(path, out var file);
                 if (error != 0)
                 {
                     logger.Info($"OnTruncateFile({path}, {size}) -> {error}");

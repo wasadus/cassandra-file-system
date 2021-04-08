@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+
 using CassandraFS.CassandraHandler;
 using CassandraFS.Models;
+
 using Mono.Fuse.NETStandard;
 using Mono.Unix.Native;
 
@@ -154,50 +156,68 @@ namespace CassandraFS
         public Errno TryReadFile(string path, OpenFlags flags, out FileModel file)
         {
             // O_APPEND not implemented
-            var fileName = GetFileName(path);
-            var parentDirPath = GetParentDirectory(path);
             file = null;
+            var error = CheckFileParentDirectory(path);
+            if (error != 0)
+            {
+                return error;
+            }
+
+            file = fileRepository.ReadFile(path);
+
+            switch (file == null)
+            {
+            case true when (flags & OpenFlags.O_CREAT) == 0:
+                return Errno.ENOENT;
+            case true when (flags & OpenFlags.O_CREAT) != 0:
+                var fileName = GetFileName(path);
+                var parentDirPath = GetParentDirectory(path);
+                var now = DateTimeOffset.Now;
+                var euid = Syscall.geteuid();
+                var egid = Syscall.getegid();
+                file = new FileModel
+                    {
+                        Path = parentDirPath,
+                        Name = fileName,
+                        Data = new byte[0],
+                        ModifiedTimestamp = now,
+                        ExtendedAttributes = new ExtendedAttributes(),
+                        FilePermissions = FilePermissions.ACCESSPERMS | FilePermissions.S_IFREG,
+                        GID = egid,
+                        UID = euid,
+                    };
+                fileRepository.WriteFile(file);
+                return 0;
+            case false when (flags & OpenFlags.O_TRUNC) != 0:
+                file.Data = new byte[0];
+                return 0;
+            default:
+                return 0;
+            }
+        }
+
+        private Errno CheckFileParentDirectory(string path)
+        {
+            var parentDirPath = GetParentDirectory(path);
             if (!IsDirectoryValid(parentDirPath, out var error))
             {
                 return error;
             }
 
-            if (directoryRepository.IsDirectoryExists(path))
+            return directoryRepository.IsDirectoryExists(path) ? Errno.EISDIR : 0;
+        }
+
+        public Errno TryReadFile(string path, out FileModel file)
+        {
+            file = null;
+            var error = CheckFileParentDirectory(path);
+            if (error != 0)
             {
-                return Errno.EISDIR;
+                return error;
             }
 
             file = fileRepository.ReadFile(path);
-            if ((flags & OpenFlags.O_CREAT) == 0 && file == null)
-            {
-                return Errno.ENOENT;
-            }
-
-            if (file != null)
-            {
-                if ((flags & OpenFlags.O_TRUNC) != 0)
-                {
-                    file.Data = new byte[0];
-                }
-                return 0;
-            }
-
-            var now = DateTimeOffset.Now;
-            var euid = Syscall.geteuid();
-            var egid = Syscall.getegid();
-            file = new FileModel
-                {
-                    Path = parentDirPath,
-                    Name = fileName,
-                    Data = new byte[0],
-                    ModifiedTimestamp = now,
-                    ExtendedAttributes = new ExtendedAttributes(),
-                    FilePermissions = FilePermissions.ACCESSPERMS | FilePermissions.S_IFREG,
-                    GID = egid,
-                    UID = euid,
-                };
-            fileRepository.WriteFile(file);
-            return 0;
+            return file == null ? Errno.ENOENT : 0;
         }
 
         public Errno TryWriteFile(FileModel file)
@@ -257,7 +277,7 @@ namespace CassandraFS
 
         public Errno TryRenameFile(string from, string to)
         {
-            var error = TryReadFile(from, 0, out var file);
+            var error = TryReadFile(from, out var file);
             if (error != 0)
             {
                 return error;
@@ -285,7 +305,7 @@ namespace CassandraFS
 
         public Errno TrySetExtendedAttribute(string path, string name, byte[] value, XattrFlags flags)
         {
-            var error = TryReadFile(path, 0, out var file);
+            var error = TryReadFile(path, out var file);
             if (error != 0)
             {
                 return error;
@@ -309,7 +329,7 @@ namespace CassandraFS
         public Errno TryGetExtendedAttribute(string path, string name, byte[] value, out int bytesWritten)
         {
             bytesWritten = 0;
-            var error = TryReadFile(path, 0, out var file);
+            var error = TryReadFile(path, out var file);
             if (error != 0)
             {
                 return error;
@@ -336,7 +356,7 @@ namespace CassandraFS
         public Errno TryGetExtendedAttributesList(string path, out string[] names)
         {
             names = null;
-            var error = TryReadFile(path, 0, out var file);
+            var error = TryReadFile(path, out var file);
             if (error != 0)
             {
                 return error;
@@ -347,7 +367,7 @@ namespace CassandraFS
 
         public Errno TryRemoveExtendedAttribute(string path, string name)
         {
-            var error = TryReadFile(path, 0, out var file);
+            var error = TryReadFile(path, out var file);
             if (error != 0)
             {
                 return error;
@@ -467,7 +487,7 @@ namespace CassandraFS
                 return error;
             }
 
-            error = TryReadFile(path, 0, out var file);
+            error = TryReadFile(path, out var file);
             if (error == 0)
             {
                 logger.Info($"TryGetFileSystemEntry -> file {file.Name}");
