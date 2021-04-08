@@ -16,11 +16,13 @@ namespace CassandraFS.CassandraHandler
 {
     public class DirectoryRepository
     {
+        private readonly IGlobalTimestampProvider timestampProvider;
         private readonly Table<CQLDirectory> directoriesTableEvent;
         private readonly DirectoryModel root = new DirectoryModel {Path = "", Name = "", FilePermissions = FilePermissions.ACCESSPERMS | FilePermissions.S_IFDIR, GID = 0, UID = 0, ModifiedTimestamp = DateTimeOffset.Now};
 
-        public DirectoryRepository(ISession session)
+        public DirectoryRepository(ISession session, IGlobalTimestampProvider timestampProvider)
         {
+            this.timestampProvider = timestampProvider;
             directoriesTableEvent = new Table<CQLDirectory>(session);
         }
 
@@ -37,7 +39,7 @@ namespace CassandraFS.CassandraHandler
                 .Any();
 
         public void WriteDirectory(DirectoryModel directory)
-           => directoriesTableEvent.Insert(GetCQLDirectory(directory)).SetTimestamp(DateTimeOffset.Now).Execute();
+           => directoriesTableEvent.Insert(GetCQLDirectory(directory)).SetTimestamp(timestampProvider.UpdateTimestamp()).Execute();
 
         public DirectoryModel ReadDirectory(string path)
         {
@@ -62,7 +64,7 @@ namespace CassandraFS.CassandraHandler
             directoriesTableEvent
                 .Where(d => d.Path.Equals(parentDirPath) && d.Name.Equals(dirName))
                 .Delete()
-                .SetTimestamp(DateTimeOffset.Now)
+                .SetTimestamp(timestampProvider.UpdateTimestamp())
                 .Execute();
         }
 
