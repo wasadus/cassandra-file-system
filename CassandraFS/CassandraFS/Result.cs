@@ -23,14 +23,24 @@ namespace CassandraFS
             return new Result<TValue>(value);
         }
 
-        public static Result Fail(FileSystemError errorType)
+        public static Result Fail(FileSystemError? errorType)
         {
             return new Result(errorType);
         }
 
-        public static Result<TValue> Fail<TValue>(FileSystemError errorType)
+        public static Result<TValue> Fail<TValue>(FileSystemError? errorType)
         {
             return new Result<TValue>(errorType);
+        }
+
+        public Result<TOutput> Then<TOutput>(Func<Result<TOutput>> continuation)
+        {
+            return IsSuccessful() ? continuation() : Fail<TOutput>(ErrorType);
+        }
+
+        public Result Then(Func<Result> continuation)
+        {
+            return IsSuccessful() ? continuation() : Fail(ErrorType);
         }
 
         public FileSystemError? ErrorType { get; protected set; }
@@ -53,6 +63,11 @@ namespace CassandraFS
         public static implicit operator Result<TValue>(Result result)
         {
             return new Result<TValue>(result.ErrorType);
+        }
+
+        public Result<TOutput> Then<TOutput>(Func<TValue, Result<TOutput>> continuation)
+        {
+            return IsSuccessful() ? continuation(value) : Result.Fail<TOutput>(ErrorType);
         }
 
         public TValue Value

@@ -27,7 +27,7 @@ namespace CassandraFS
             directoryRepository.ReadDirectoryContent(path)
                                .Concat(fileRepository.ReadDirectoryContent(path))
                                .ToList();
-          
+
         public bool IsDirectoryEmpty(string path)
             => !(fileRepository.IsFilesExists(path) || directoryRepository.IsDirectoriesExists(path));
 
@@ -51,19 +51,13 @@ namespace CassandraFS
 
         public Result<DirectoryModel> ReadDirectory(string path)
         {
-            var directoryCheck = IsDirectoryValid(GetParentDirectory(path));
-            if (!directoryCheck.IsSuccessful())
-            {
-                return directoryCheck;
-            }
-
-            if (fileRepository.IsFileExists(path))
-            {
-                return Result.Fail(FileSystemError.NotDirectory);
-            }
-
-            var directory = directoryRepository.ReadDirectory(path);
-            return directory == null ? Result.Fail(FileSystemError.NoEntry) : Result.Ok(directory);
+            return IsDirectoryValid(GetParentDirectory(path))
+                   .Then(() => fileRepository.IsFileExists(path) ? Result.Fail(FileSystemError.NotDirectory) : Result.Ok())
+                   .Then(() =>
+                       {
+                           var directory = directoryRepository.ReadDirectory(path);
+                           return directory == null ? Result.Fail(FileSystemError.NoEntry) : Result.Ok(directory);
+                       });
         }
 
         public Result WriteDirectory(string path, FilePermissions mode)
@@ -120,7 +114,7 @@ namespace CassandraFS
 
             if (!fromDirectory.IsSuccessful())
             {
-                return Result.Fail(fromDirectory.ErrorType.Value);
+                return Result.Fail(fromDirectory.ErrorType);
             }
 
             if (to.StartsWith(from))
@@ -277,7 +271,7 @@ namespace CassandraFS
             var file = ReadFile(from);
             if (!file.IsSuccessful())
             {
-                return Result.Fail(file.ErrorType.Value);
+                return Result.Fail(file.ErrorType);
             }
 
             if (directoryRepository.IsDirectoryExists(to))
@@ -305,7 +299,7 @@ namespace CassandraFS
             var file = ReadFile(path);
             if (!file.IsSuccessful())
             {
-                return Result.Fail(file.ErrorType.Value);
+                return Result.Fail(file.ErrorType);
             }
 
             var attributes = file.Value.ExtendedAttributes.Attributes;
@@ -329,7 +323,7 @@ namespace CassandraFS
             var file = ReadFile(path);
             if (!file.IsSuccessful())
             {
-                return Result.Fail(file.ErrorType.Value);
+                return Result.Fail(file.ErrorType);
             }
 
             var attributes = file.Value.ExtendedAttributes.Attributes;
@@ -354,7 +348,7 @@ namespace CassandraFS
             var file = ReadFile(path);
             if (!file.IsSuccessful())
             {
-                return Result.Fail(file.ErrorType.Value);
+                return Result.Fail(file.ErrorType);
             }
             return Result.Ok(file.Value.ExtendedAttributes.Attributes.Keys.ToArray());
         }
@@ -364,7 +358,7 @@ namespace CassandraFS
             var file = ReadFile(path);
             if (!file.IsSuccessful())
             {
-                return Result.Fail(file.ErrorType.Value);
+                return Result.Fail(file.ErrorType);
             }
 
             var attributes = file.Value.ExtendedAttributes.Attributes;
@@ -383,7 +377,7 @@ namespace CassandraFS
             var entry = GetFileSystemEntry(path);
             if (!entry.IsSuccessful())
             {
-                return Result.Fail(entry.ErrorType.Value);
+                return Result.Fail(entry.ErrorType);
             }
             return Result.Ok(entry.Value.GetStat());
         }
@@ -393,7 +387,7 @@ namespace CassandraFS
             var entry = GetFileSystemEntry(path);
             if (!entry.IsSuccessful())
             {
-                return Result.Fail(entry.ErrorType.Value);
+                return Result.Fail(entry.ErrorType);
             }
 
             var euid = Syscall.geteuid();
@@ -411,7 +405,7 @@ namespace CassandraFS
             var entry = GetFileSystemEntry(path);
             if (!entry.IsSuccessful())
             {
-                return Result.Fail(entry.ErrorType.Value);
+                return Result.Fail(entry.ErrorType);
             }
 
             if (!entry.Value.IsChownPermissionsOk(newUID, newGID))
@@ -430,7 +424,7 @@ namespace CassandraFS
             var entry = GetFileSystemEntry(path);
             if (!entry.IsSuccessful())
             {
-                return Result.Fail(entry.ErrorType.Value);
+                return Result.Fail(entry.ErrorType);
             }
 
             var permissions = entry.Value.FilePermissions;
@@ -453,21 +447,21 @@ namespace CassandraFS
             var entry = GetFileSystemEntry(path);
             if (!entry.IsSuccessful())
             {
-                return Result.Fail(entry.ErrorType.Value);
+                return Result.Fail(entry.ErrorType);
             }
             var buffer = new Statvfs
-            {
-                f_bsize = 4096,
-                f_frsize = 4096,
-                f_blocks = 1, // just not zero
-                f_bfree = ulong.MaxValue,
-                f_bavail = ulong.MaxValue,
-                f_files = 4096, // Maybe it should be valid counter
-                f_ffree = ulong.MaxValue,
-                f_favail = ulong.MaxValue,
-                f_fsid = 1,
-                f_namemax = 255
-            };
+                {
+                    f_bsize = 4096,
+                    f_frsize = 4096,
+                    f_blocks = 1, // just not zero
+                    f_bfree = ulong.MaxValue,
+                    f_bavail = ulong.MaxValue,
+                    f_files = 4096, // Maybe it should be valid counter
+                    f_ffree = ulong.MaxValue,
+                    f_favail = ulong.MaxValue,
+                    f_fsid = 1,
+                    f_namemax = 255
+                };
             return Result.Ok(buffer);
         }
 
@@ -489,7 +483,7 @@ namespace CassandraFS
             {
                 return Result.Ok(directory.Value as IFileSystemEntry);
             }
-            return Result.Fail(directory.ErrorType.Value);
+            return Result.Fail(directory.ErrorType);
         }
 
         private void WriteFileSystemEntry(IFileSystemEntry entry)
@@ -510,8 +504,8 @@ namespace CassandraFS
         private Result IsDirectoryValid(string directory)
         {
             return directoryRepository.IsDirectoriesExists(directory)
-                ? Result.Ok()
-                : Result.Fail(fileRepository.IsFileExists(directory) ? FileSystemError.NotDirectory : FileSystemError.NoEntry);
+                       ? Result.Ok()
+                       : Result.Fail(fileRepository.IsFileExists(directory) ? FileSystemError.NotDirectory : FileSystemError.NoEntry);
         }
     }
 }
