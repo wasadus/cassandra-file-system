@@ -70,6 +70,11 @@ namespace CassandraFS.CassandraHandler
             return fileModel;
         }
 
+        public IEnumerable<FileModel> GetTree(string rootPath)
+        {
+            return filesTableEvent.Where(file => file.Path.StartsWith(rootPath)).Select(file => GetFileModel(file)).Execute();
+        }
+
         public void DeleteFile(string path)
         {
             var fileName = FileSystemRepository.GetFileName(path);

@@ -57,6 +57,18 @@ namespace CassandraFS.CassandraHandler
             return GetDirectoryModel(dir);
         }
 
+        public IEnumerable<DirectoryModel> GetTree(string rootPath)
+        {
+            return rootPath.Equals("/")
+                       ? directoriesTableEvent
+                         .Select(x => GetDirectoryModel(x))
+                         .Execute()
+                       : directoriesTableEvent
+                         .Where(directory => directory.Path.StartsWith(rootPath))
+                         .Select(directory => GetDirectoryModel(directory))
+                         .Execute();
+        }
+
         public void DeleteDirectory(string path)
         {
             var dirName = FileSystemRepository.GetFileName(path);
