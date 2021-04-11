@@ -70,6 +70,11 @@ namespace CassandraFS
             return IsSuccessful() ? continuation(value) : Result.Fail<TOutput>(ErrorType);
         }
 
+        public Result Then(Func<TValue, Result> continuation)
+        {
+            return IsSuccessful() ? continuation(value) : Result.Fail(ErrorType);
+        }
+
         public TValue Value
         {
             get

@@ -62,85 +62,60 @@ namespace CassandraFS
 
         public Result WriteDirectory(string path, FilePermissions mode)
         {
-            var dirName = GetFileName(path);
             var parentDirPath = GetParentDirectory(path);
-            var directoryCheck = IsDirectoryValid(parentDirPath);
-
-            if (!directoryCheck.IsSuccessful())
-            {
-                return directoryCheck;
-            }
-
-            if (directoryRepository.IsDirectoryExists(path))
-            {
-                return Result.Fail(FileSystemError.AlreadyExist);
-            }
-
-            var uid = Syscall.getuid();
-            var gid = Syscall.getgid();
-            mode |= FilePermissions.S_IFDIR;
-            directoryRepository.WriteDirectory(new DirectoryModel
-                {
-                    Path = parentDirPath,
-                    Name = dirName,
-                    FilePermissions = mode,
-                    UID = uid,
-                    GID = gid,
-                    ModifiedTimestamp = DateTimeOffset.Now
-                });
-            return Result.Ok();
+            return IsDirectoryValid(parentDirPath)
+                   .Then(() => directoryRepository.IsDirectoryExists(path) ? Result.Fail(FileSystemError.AlreadyExist) : Result.Ok())
+                   .Then(() =>
+                       {
+                           var uid = Syscall.getuid();
+                           var gid = Syscall.getgid();
+                           mode |= FilePermissions.S_IFDIR;
+                           directoryRepository.WriteDirectory(new DirectoryModel
+                               {
+                                   Path = parentDirPath,
+                                   Name = GetFileName(path),
+                                   FilePermissions = mode,
+                                   UID = uid,
+                                   GID = gid,
+                                   ModifiedTimestamp = DateTimeOffset.Now
+                               });
+                           return Result.Ok();
+                       });
         }
 
         public Result DeleteDirectory(string path)
         {
-            var directoryCheck = IsDirectoryValid(path);
-            if (!directoryCheck.IsSuccessful())
-            {
-                return directoryCheck;
-            }
-
-            if (!IsDirectoryEmpty(path))
-            {
-                return Result.Fail(FileSystemError.DirectoryNotEmpty);
-            }
-
-            directoryRepository.DeleteDirectory(path);
-            return Result.Ok();
+            return IsDirectoryValid(path)
+                   .Then(() => IsDirectoryEmpty(path) ? Result.Ok() : Result.Fail(FileSystemError.DirectoryNotEmpty))
+                   .Then(() =>
+                       {
+                           directoryRepository.DeleteDirectory(path);
+                           return Result.Ok();
+                       });
         }
 
         public Result RenameDirectory(string from, string to)
         {
-            var fromDirectory = ReadDirectory(from);
-
-            if (!fromDirectory.IsSuccessful())
-            {
-                return Result.Fail(fromDirectory.ErrorType);
-            }
-
-            if (to.StartsWith(from))
-            {
-                return Result.Fail(FileSystemError.InvalidArgument);
-            }
-
-            if (directoryRepository.IsDirectoryExists(to))
-            {
-                return Result.Fail(FileSystemError.AlreadyExist);
-            }
-
-            // TODO надо файлы тоже перенести
-            var parentDirPath = GetParentDirectory(to);
-            var dirName = GetFileName(to);
-            directoryRepository.WriteDirectory(new DirectoryModel
-                {
-                    Path = parentDirPath,
-                    Name = dirName,
-                    FilePermissions = fromDirectory.Value.FilePermissions,
-                    UID = fromDirectory.Value.UID,
-                    GID = fromDirectory.Value.GID,
-                    ModifiedTimestamp = DateTimeOffset.Now
-                });
-            directoryRepository.DeleteDirectory(from);
-            return Result.Ok();
+            return ReadDirectory(from)
+                   .Then(fromDirectory => to.StartsWith(from) ? Result.Fail(FileSystemError.InvalidArgument) : Result.Ok(fromDirectory))
+                   .Then(fromDirectory => directoryRepository.IsDirectoriesExists(to) ? Result.Fail(FileSystemError.AlreadyExist) : Result.Ok(fromDirectory))
+                   .Then(fromDirectory =>
+                       {
+                           // TODO надо файлы тоже перенести
+                           var parentDirPath = GetParentDirectory(to);
+                           var dirName = GetFileName(to);
+                           directoryRepository.WriteDirectory(new DirectoryModel
+                               {
+                                   Path = parentDirPath,
+                                   Name = dirName,
+                                   FilePermissions = fromDirectory.FilePermissions,
+                                   UID = fromDirectory.UID,
+                                   GID = fromDirectory.GID,
+                                   ModifiedTimestamp = DateTimeOffset.Now
+                               });
+                           directoryRepository.DeleteDirectory(from);
+                           return Result.Ok();
+                       });
         }
 
         public Result<FileModel> ReadFile(string path, OpenFlags flags)
@@ -187,8 +162,7 @@ namespace CassandraFS
 
         private Result CheckFileParentDirectory(string path)
         {
-            var parentDirPath = GetParentDirectory(path);
-            return IsDirectoryValid(parentDirPath)
+            return IsDirectoryValid(GetParentDirectory(path))
                 .Then(() => directoryRepository.IsDirectoryExists(path) ? Result.Fail(FileSystemError.IsDirectory) : Result.Ok());
         }
 
@@ -196,10 +170,10 @@ namespace CassandraFS
         {
             return CheckFileParentDirectory(path)
                 .Then(() =>
-                {
-                    var file = fileRepository.ReadFile(path);
-                    return file == null ? Result.Fail(FileSystemError.NoEntry) : Result.Ok(file);
-                });
+                    {
+                        var file = fileRepository.ReadFile(path);
+                        return file == null ? Result.Fail(FileSystemError.NoEntry) : Result.Ok(file);
+                    });
         }
 
         public void WriteFile(FileModel file)
@@ -209,273 +183,211 @@ namespace CassandraFS
 
         public Result CreateFile(string path, FilePermissions mode, ulong rdev)
         {
-            var fileName = GetFileName(path);
             var parentDirPath = GetParentDirectory(path);
-            var directoryCheck = IsDirectoryValid(parentDirPath);
-
-            if (!directoryCheck.IsSuccessful())
-            {
-                return directoryCheck;
-            }
-
-            if (fileRepository.IsFileExists(path))
-            {
-                return Result.Fail(FileSystemError.AlreadyExist);
-            }
-
-            var now = DateTimeOffset.Now;
-            var uid = Syscall.getuid();
-            var gid = Syscall.getgid();
-            var file = new FileModel
-                {
-                    Path = parentDirPath,
-                    Name = fileName,
-                    Data = new byte[0],
-                    ExtendedAttributes = new ExtendedAttributes(),
-                    ModifiedTimestamp = now,
-                    FilePermissions = mode,
-                    GID = gid,
-                    UID = uid,
-                };
-            fileRepository.WriteFile(file);
-            return Result.Ok();
+            return IsDirectoryValid(parentDirPath)
+                   .Then(() => fileRepository.IsFileExists(path) ? Result.Fail(FileSystemError.AlreadyExist) : Result.Ok())
+                   .Then(() =>
+                       {
+                           var fileName = GetFileName(path);
+                           var now = DateTimeOffset.Now;
+                           var uid = Syscall.getuid();
+                           var gid = Syscall.getgid();
+                           var file = new FileModel
+                               {
+                                   Path = parentDirPath,
+                                   Name = fileName,
+                                   Data = new byte[0],
+                                   ExtendedAttributes = new ExtendedAttributes(),
+                                   ModifiedTimestamp = now,
+                                   FilePermissions = mode,
+                                   GID = gid,
+                                   UID = uid,
+                               };
+                           fileRepository.WriteFile(file);
+                           return Result.Ok();
+                       });
         }
 
         public Result DeleteFile(string path)
         {
-            var directoryCheck = IsDirectoryValid(GetParentDirectory(path));
-            if (!directoryCheck.IsSuccessful())
-            {
-                return directoryCheck;
-            }
-
-            if (!fileRepository.IsFileExists(path))
-            {
-                return Result.Fail(FileSystemError.NoEntry);
-            }
-
-            fileRepository.DeleteFile(path);
-            return Result.Ok();
+            return IsDirectoryValid(GetParentDirectory(path))
+                   .Then(() => fileRepository.IsFilesExists(path) ? Result.Ok() : Result.Fail(FileSystemError.NoEntry))
+                   .Then(() =>
+                       {
+                           fileRepository.DeleteFile(path);
+                           return Result.Ok();
+                       });
         }
 
         public Result RenameFile(string from, string to)
         {
-            var file = ReadFile(from);
-            if (!file.IsSuccessful())
-            {
-                return Result.Fail(file.ErrorType);
-            }
-
-            if (directoryRepository.IsDirectoryExists(to))
-            {
-                return Result.Fail(FileSystemError.IsDirectory);
-            }
-
-            if (fileRepository.IsFileExists(to))
-            {
-                return Result.Fail(FileSystemError.AlreadyExist);
-            }
-
-            fileRepository.DeleteFile(from);
-            var parentDirPath = GetParentDirectory(to);
-            var fileName = GetFileName(to);
-            file.Value.Name = fileName;
-            file.Value.Path = parentDirPath;
-            file.Value.ModifiedTimestamp = DateTimeOffset.Now;
-            fileRepository.WriteFile(file.Value);
-            return Result.Ok();
+            return ReadFile(from)
+                   .Then(file => directoryRepository.IsDirectoryExists(to) ? Result.Fail(FileSystemError.IsDirectory) : Result.Ok(file))
+                   .Then(file => fileRepository.IsFileExists(to) ? Result.Fail(FileSystemError.AlreadyExist) : Result.Ok(file))
+                   .Then(file =>
+                       {
+                           fileRepository.DeleteFile(from);
+                           var parentDirPath = GetParentDirectory(to);
+                           var fileName = GetFileName(to);
+                           file.Name = fileName;
+                           file.Path = parentDirPath;
+                           file.ModifiedTimestamp = DateTimeOffset.Now;
+                           fileRepository.WriteFile(file);
+                           return Result.Ok();
+                       });
         }
 
         public Result SetExtendedAttribute(string path, string name, byte[] value, XattrFlags flags)
         {
-            var file = ReadFile(path);
-            if (!file.IsSuccessful())
-            {
-                return Result.Fail(file.ErrorType);
-            }
+            return ReadFile(path)
+                .Then(file =>
+                    {
+                        var attributes = file.ExtendedAttributes.Attributes;
+                        if (attributes.ContainsKey(name) && flags == XattrFlags.XATTR_CREATE)
+                        {
+                            return Result.Fail(FileSystemError.AlreadyExist);
+                        }
 
-            var attributes = file.Value.ExtendedAttributes.Attributes;
-            if (attributes.ContainsKey(name) && flags == XattrFlags.XATTR_CREATE)
-            {
-                return Result.Fail(FileSystemError.AlreadyExist);
-            }
+                        if (!attributes.ContainsKey(name) && flags == XattrFlags.XATTR_REPLACE)
+                        {
+                            return Result.Fail(FileSystemError.NoAttribute);
+                        }
 
-            if (!attributes.ContainsKey(name) && flags == XattrFlags.XATTR_REPLACE)
-            {
-                return Result.Fail(FileSystemError.NoAttribute);
-            }
-
-            attributes.Add(name, value);
-            WriteFile(file.Value);
-            return Result.Ok();
+                        attributes.Add(name, value);
+                        WriteFile(file);
+                        return Result.Ok();
+                    });
         }
 
         public Result<int> GetExtendedAttribute(string path, string name, byte[] value)
         {
-            var file = ReadFile(path);
-            if (!file.IsSuccessful())
-            {
-                return Result.Fail(file.ErrorType);
-            }
+            return ReadFile(path)
+                .Then(file =>
+                    {
+                        var attributes = file.ExtendedAttributes.Attributes;
+                        if (!attributes.ContainsKey(name))
+                        {
+                            return Result.Fail(FileSystemError.NoAttribute);
+                        }
 
-            var attributes = file.Value.ExtendedAttributes.Attributes;
-            if (!attributes.ContainsKey(name))
-            {
-                return Result.Fail(FileSystemError.NoAttribute);
-            }
+                        var attribute = attributes[name];
+                        if (attribute.Length > value.Length)
+                        {
+                            return Result.Fail(FileSystemError.OutOfRange);
+                        }
 
-            var attribute = attributes[name];
-            if (attribute.Length > value.Length)
-            {
-                return Result.Fail(FileSystemError.OutOfRange);
-            }
-
-            using var ms = new MemoryStream(value);
-            ms.Write(attribute);
-            return Result.Ok(attribute.Length);
+                        using var ms = new MemoryStream(value);
+                        ms.Write(attribute);
+                        return Result.Ok(attribute.Length);
+                    });
         }
 
         public Result<string[]> GetExtendedAttributesList(string path)
         {
-            var file = ReadFile(path);
-            if (!file.IsSuccessful())
-            {
-                return Result.Fail(file.ErrorType);
-            }
-            return Result.Ok(file.Value.ExtendedAttributes.Attributes.Keys.ToArray());
+            return ReadFile(path)
+                .Then(file => Result.Ok(file.ExtendedAttributes.Attributes.Keys.ToArray()));
         }
 
         public Result RemoveExtendedAttribute(string path, string name)
         {
-            var file = ReadFile(path);
-            if (!file.IsSuccessful())
-            {
-                return Result.Fail(file.ErrorType);
-            }
-
-            var attributes = file.Value.ExtendedAttributes.Attributes;
-            if (!attributes.ContainsKey(name))
-            {
-                return Result.Fail(FileSystemError.NoAttribute);
-            }
-
-            attributes.Remove(name);
-            WriteFile(file.Value);
-            return Result.Ok();
+            return ReadFile(path)
+                .Then(file =>
+                    {
+                        var attributes = file.ExtendedAttributes.Attributes;
+                        if (!attributes.ContainsKey(name))
+                        {
+                            return Result.Fail(FileSystemError.NoAttribute);
+                        }
+                        attributes.Remove(name);
+                        WriteFile(file);
+                        return Result.Ok();
+                    });
         }
 
         public Result<Stat> GetPathStatus(string path)
         {
-            var entry = GetFileSystemEntry(path);
-            if (!entry.IsSuccessful())
-            {
-                return Result.Fail(entry.ErrorType);
-            }
-            return Result.Ok(entry.Value.GetStat());
+            return GetFileSystemEntry(path)
+                .Then(entry => Result.Ok(entry.GetStat()));
         }
 
         public Result ChangePathPermissions(string path, FilePermissions permissions)
         {
-            var entry = GetFileSystemEntry(path);
-            if (!entry.IsSuccessful())
-            {
-                return Result.Fail(entry.ErrorType);
-            }
-
-            var euid = Syscall.geteuid();
-            if (euid != 0 && entry.Value.UID != euid)
-            {
-                return Result.Fail(FileSystemError.PermissionDenied);
-            }
-
-            WriteFileSystemEntry(entry.Value);
-            return Result.Ok();
+            return GetFileSystemEntry(path)
+                .Then(entry =>
+                    {
+                        var euid = Syscall.geteuid();
+                        if (euid != 0 && entry.UID != euid)
+                        {
+                            return Result.Fail(FileSystemError.PermissionDenied);
+                        }
+                        WriteFileSystemEntry(entry);
+                        return Result.Ok();
+                    });
         }
 
         public Result ChangePathOwner(string path, uint newUID, uint newGID)
         {
-            var entry = GetFileSystemEntry(path);
-            if (!entry.IsSuccessful())
-            {
-                return Result.Fail(entry.ErrorType);
-            }
-
-            if (!entry.Value.IsChownPermissionsOk(newUID, newGID))
-            {
-                return Result.Fail(FileSystemError.PermissionDenied);
-            }
-            entry.Value.UID = newUID;
-            entry.Value.GID = newGID;
-
-            WriteFileSystemEntry(entry.Value);
-            return Result.Ok();
+            return GetFileSystemEntry(path)
+                .Then(entry =>
+                    {
+                        if (!entry.IsChownPermissionsOk(newUID, newGID))
+                        {
+                            return Result.Fail(FileSystemError.PermissionDenied);
+                        }
+                        entry.UID = newUID;
+                        entry.GID = newGID;
+                        WriteFileSystemEntry(entry);
+                        return Result.Ok();
+                    });
         }
 
         public Result GetAccessToPath(string path, AccessModes mode)
         {
-            var entry = GetFileSystemEntry(path);
-            if (!entry.IsSuccessful())
-            {
-                return Result.Fail(entry.ErrorType);
-            }
-
-            var permissions = entry.Value.FilePermissions;
-            var fileUID = entry.Value.UID;
-            var fileGID = entry.Value.GID;
-
-            var userUID = Syscall.getuid();
-            var userGID = Syscall.getgid();
-            if (((AccessModes.R_OK & mode) != 0 && !permissions.CanUserRead(userUID, userGID, fileUID, fileGID))
-                || ((AccessModes.W_OK & mode) != 0 && !permissions.CanUserWrite(userUID, userGID, fileUID, fileGID))
-                || ((AccessModes.X_OK & mode) != 0 && !permissions.CanUserExecute(userUID, userGID, fileUID, fileGID)))
-            {
-                return Result.Fail(FileSystemError.AccessDenied);
-            }
-            return Result.Ok();
+            return GetFileSystemEntry(path).Then(entry =>
+                {
+                    var permissions = entry.FilePermissions;
+                    var fileUID = entry.UID;
+                    var fileGID = entry.GID;
+                    var userUID = Syscall.getuid();
+                    var userGID = Syscall.getgid();
+                    if (((AccessModes.R_OK & mode) != 0 && !permissions.CanUserRead(userUID, userGID, fileUID, fileGID))
+                        || ((AccessModes.W_OK & mode) != 0 && !permissions.CanUserWrite(userUID, userGID, fileUID, fileGID))
+                        || ((AccessModes.X_OK & mode) != 0 && !permissions.CanUserExecute(userUID, userGID, fileUID, fileGID)))
+                    {
+                        return Result.Fail(FileSystemError.AccessDenied);
+                    }
+                    return Result.Ok();
+                });
         }
 
         public Result<Statvfs> GetFileSystemStatus(string path)
         {
-            var entry = GetFileSystemEntry(path);
-            if (!entry.IsSuccessful())
-            {
-                return Result.Fail(entry.ErrorType);
-            }
-            var buffer = new Statvfs
-                {
-                    f_bsize = 4096,
-                    f_frsize = 4096,
-                    f_blocks = 1, // just not zero
-                    f_bfree = ulong.MaxValue,
-                    f_bavail = ulong.MaxValue,
-                    f_files = 4096, // Maybe it should be valid counter
-                    f_ffree = ulong.MaxValue,
-                    f_favail = ulong.MaxValue,
-                    f_fsid = 1,
-                    f_namemax = 255
-                };
-            return Result.Ok(buffer);
+            return GetFileSystemEntry(path)
+                .Then(entry => Result.Ok(new Statvfs
+                    {
+                        f_bsize = 4096,
+                        f_frsize = 4096,
+                        f_blocks = 1, // just not zero
+                        f_bfree = ulong.MaxValue,
+                        f_bavail = ulong.MaxValue,
+                        f_files = 4096, // Maybe it should be valid counter
+                        f_ffree = ulong.MaxValue,
+                        f_favail = ulong.MaxValue,
+                        f_fsid = 1,
+                        f_namemax = 255
+                    }));
         }
 
         private Result<IFileSystemEntry> GetFileSystemEntry(string path)
         {
-            var parentDirectoryCheck = IsDirectoryValid(GetParentDirectory(path));
-            if (!parentDirectoryCheck.IsSuccessful())
-            {
-                return parentDirectoryCheck;
-            }
-
-            var file = ReadFile(path);
-            if (file.IsSuccessful())
-            {
-                return Result.Ok(file.Value as IFileSystemEntry);
-            }
-            var directory = ReadDirectory(path);
-            if (directory.IsSuccessful())
-            {
-                return Result.Ok(directory.Value as IFileSystemEntry);
-            }
-            return Result.Fail(directory.ErrorType);
+            return IsDirectoryValid(GetParentDirectory(path))
+                .Then(() =>
+                    {
+                        var fileResult = ReadFile(path).Then(file => Result.Ok(file as IFileSystemEntry));
+                        return fileResult.IsSuccessful()
+                                   ? fileResult
+                                   : ReadDirectory(path).Then(directory => Result.Ok(directory as IFileSystemEntry));
+                    });
         }
 
         private void WriteFileSystemEntry(IFileSystemEntry entry)
