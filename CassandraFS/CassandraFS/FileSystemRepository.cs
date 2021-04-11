@@ -101,19 +101,23 @@ namespace CassandraFS
                    .Then(fromDirectory => directoryRepository.IsDirectoriesExists(to) ? Result.Fail(FileSystemError.AlreadyExist) : Result.Ok(fromDirectory))
                    .Then(fromDirectory =>
                        {
-                           // TODO надо файлы тоже перенести
-                           var parentDirPath = GetParentDirectory(to);
-                           var dirName = GetFileName(to);
-                           directoryRepository.WriteDirectory(new DirectoryModel
-                               {
-                                   Path = parentDirPath,
-                                   Name = dirName,
-                                   FilePermissions = fromDirectory.FilePermissions,
-                                   UID = fromDirectory.UID,
-                                   GID = fromDirectory.GID,
-                                   ModifiedTimestamp = DateTimeOffset.Now
-                               });
                            directoryRepository.DeleteDirectory(from);
+                           fromDirectory.Path = GetParentDirectory(to);
+                           fromDirectory.Name = GetFileName(to);
+                           directoryRepository.WriteDirectory(fromDirectory);
+                           foreach (var directory in directoryRepository.GetTree(from))
+                           {
+                               //TODO Check pathtofile = path + name
+                               directoryRepository.DeleteDirectory(directory.Path + directory.Name);
+                               directory.Path = directory.Path.Replace(from, to);
+                               directoryRepository.WriteDirectory(directory);
+                           }
+                           foreach (var file in fileRepository.GetTree(from))
+                           {
+                               fileRepository.DeleteFile(file.Path + file.Name);
+                               file.Path = file.Path.Replace(from, to);
+                               fileRepository.WriteFile(file);
+                           }
                            return Result.Ok();
                        });
         }
