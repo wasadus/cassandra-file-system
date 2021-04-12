@@ -33,14 +33,19 @@ namespace CassandraFS
             return new Result<TValue>(errorType);
         }
 
-        public Result<TOutput> Then<TOutput>(Func<Result<TOutput>> continuation)
+        public Result<TOutput> Then<TOutput>(Func<TOutput> continuation)
         {
-            return IsSuccessful() ? continuation() : Fail<TOutput>(ErrorType);
+            return IsSuccessful() ? Ok(continuation()) : Fail<TOutput>(ErrorType);
         }
 
         public Result Then(Func<Result> continuation)
         {
             return IsSuccessful() ? continuation() : Fail(ErrorType);
+        }
+
+        public Result Check(Func<bool> condition, FileSystemError errorType)
+        {
+            return !IsSuccessful() || condition() ? this : Fail(errorType);
         }
 
         public FileSystemError? ErrorType { get; protected set; }
@@ -68,6 +73,16 @@ namespace CassandraFS
         public Result<TOutput> Then<TOutput>(Func<TValue, Result<TOutput>> continuation)
         {
             return IsSuccessful() ? continuation(value) : Result.Fail<TOutput>(ErrorType);
+        }
+
+        public Result<TValue> Check(Func<TValue, bool> condition, FileSystemError errorType)
+        {
+            return !IsSuccessful() || condition(value) ? this : Result.Fail<TValue>(errorType);
+        }
+
+        public Result<TValue> Check(Func<TValue, bool> condition, Func<Result<TValue>> elseFunc)
+        {
+            return !IsSuccessful() || condition(value) ? this : elseFunc();
         }
 
         public Result Then(Func<TValue, Result> continuation)

@@ -52,19 +52,16 @@ namespace CassandraFS
         public Result<DirectoryModel> ReadDirectory(string path)
         {
             return IsDirectoryValid(GetParentDirectory(path))
-                   .Then(() => fileRepository.IsFileExists(path) ? Result.Fail(FileSystemError.NotDirectory) : Result.Ok())
-                   .Then(() =>
-                       {
-                           var directory = directoryRepository.ReadDirectory(path);
-                           return directory == null ? Result.Fail(FileSystemError.NoEntry) : Result.Ok(directory);
-                       });
+                   .Check(() => !fileRepository.IsFileExists(path), FileSystemError.NotDirectory)
+                   .Then(() => directoryRepository.ReadDirectory(path))
+                   .Check(directory => directory != null, FileSystemError.NoEntry);
         }
 
         public Result WriteDirectory(string path, FilePermissions mode)
         {
             var parentDirPath = GetParentDirectory(path);
             return IsDirectoryValid(parentDirPath)
-                   .Then(() => directoryRepository.IsDirectoryExists(path) ? Result.Fail(FileSystemError.AlreadyExist) : Result.Ok())
+                   .Check(() => !directoryRepository.IsDirectoryExists(path), FileSystemError.AlreadyExist)
                    .Then(() =>
                        {
                            var uid = Syscall.getuid();
@@ -86,7 +83,7 @@ namespace CassandraFS
         public Result DeleteDirectory(string path)
         {
             return IsDirectoryValid(path)
-                   .Then(() => IsDirectoryEmpty(path) ? Result.Ok() : Result.Fail(FileSystemError.DirectoryNotEmpty))
+                   .Check(() => IsDirectoryEmpty(path), FileSystemError.DirectoryNotEmpty)
                    .Then(() =>
                        {
                            directoryRepository.DeleteDirectory(path);
@@ -97,8 +94,8 @@ namespace CassandraFS
         public Result RenameDirectory(string from, string to)
         {
             return ReadDirectory(from)
-                   .Then(fromDirectory => to.StartsWith(from) ? Result.Fail(FileSystemError.InvalidArgument) : Result.Ok(fromDirectory))
-                   .Then(fromDirectory => directoryRepository.IsDirectoriesExists(to) ? Result.Fail(FileSystemError.AlreadyExist) : Result.Ok(fromDirectory))
+                   .Check(fromDirectory => !to.StartsWith(from), FileSystemError.InvalidArgument)
+                   .Check(fromDirectory => !directoryRepository.IsDirectoryExists(to), FileSystemError.AlreadyExist)
                    .Then(fromDirectory =>
                        {
                            // TODO надо файлы тоже перенести
@@ -169,11 +166,8 @@ namespace CassandraFS
         public Result<FileModel> ReadFile(string path)
         {
             return CheckFileParentDirectory(path)
-                .Then(() =>
-                    {
-                        var file = fileRepository.ReadFile(path);
-                        return file == null ? Result.Fail(FileSystemError.NoEntry) : Result.Ok(file);
-                    });
+                   .Then(() => fileRepository.ReadFile(path))
+                   .Check(file => file != null, FileSystemError.NoEntry);
         }
 
         public void WriteFile(FileModel file)
@@ -380,14 +374,23 @@ namespace CassandraFS
 
         private Result<IFileSystemEntry> GetFileSystemEntry(string path)
         {
-            return IsDirectoryValid(GetParentDirectory(path))
-                .Then(() =>
-                    {
-                        var fileResult = ReadFile(path).Then(file => Result.Ok(file as IFileSystemEntry));
-                        return fileResult.IsSuccessful()
-                                   ? fileResult
-                                   : ReadDirectory(path).Then(directory => Result.Ok(directory as IFileSystemEntry));
-                    });
+            var parentDirectoryCheck = IsDirectoryValid(GetParentDirectory(path));
+            if (!parentDirectoryCheck.IsSuccessful())
+            {
+                return parentDirectoryCheck;
+            }
+
+            var file = ReadFile(path);
+            if (file.IsSuccessful())
+            {
+                return Result.Ok(file.Value as IFileSystemEntry);
+            }
+            var directory = ReadDirectory(path);
+            if (directory.IsSuccessful())
+            {
+                return Result.Ok(directory.Value as IFileSystemEntry);
+            }
+            return Result.Fail(directory.ErrorType);
         }
 
         private void WriteFileSystemEntry(IFileSystemEntry entry)
