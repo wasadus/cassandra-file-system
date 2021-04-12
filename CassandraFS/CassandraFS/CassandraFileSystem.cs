@@ -38,7 +38,7 @@ namespace CassandraFS
             var (error, buffer) = WithLogging(
                 () => fileSystemRepository.GetPathStatus(path),
                 $"OnGetPathStatus({path})",
-                result => $"{result.Value.st_mode}, {result.Value.st_uid}");
+                result => $"{result.st_mode}, {result.st_uid}");
             buf = buffer;
             return error;
         }
@@ -70,7 +70,7 @@ namespace CassandraFS
                         return Result.Ok(rawNames);
                     },
                 $"OnReadDirectory({path})",
-                result => $"{string.Join(";", result.Value.Select(x => x.Name))}");
+                result => $"{string.Join(";", result?.Select(x => x.Name) ?? new string[0])}");
             paths = resultPaths;
             return error;
         }
@@ -178,7 +178,7 @@ namespace CassandraFS
         {
             return WithLogging(
                 () => fileSystemRepository.ReadFile(path, info.OpenFlags),
-                $"OnOpenHandle({path}, {info.OpenFlags})");
+                $"OnOpenHandle({path}, {info.OpenFlags})").Error;
         }
 
         protected override Errno OnReadHandle(
@@ -197,7 +197,7 @@ namespace CassandraFS
                         return Result.Ok(read);
                     }),
                 $"OnReadHandle({path}, {info.OpenFlags}, {info.OpenAccess}, {offset})",
-                res => $"{res.Value}");
+                res => $"{res}");
             bytesRead = result;
             return error;
         }
@@ -226,7 +226,7 @@ namespace CassandraFS
                         return Result.Ok(written);
                     }),
                 $"OnWriteHandle({path}, {info.OpenAccess}, {info.OpenFlags}, {offset})",
-                res => $"{res.Value}");
+                res => $"{res}");
             bytesWritten = result;
             return error;
         }
@@ -269,7 +269,7 @@ namespace CassandraFS
             var (error, written) = WithLogging(
                 () => fileSystemRepository.GetExtendedAttribute(path, name, value),
                 $"OnGetPathExtendedAttribute({path}, {name})",
-                res => $"{res.Value}");
+                res => $"{res}");
             bytesWritten = written;
             return error;
         }
@@ -279,7 +279,7 @@ namespace CassandraFS
             var (error, attributes) = WithLogging(
                 () => fileSystemRepository.GetExtendedAttributesList(path),
                 $"OnListPathExtendedAttributes({path})",
-                res => $"{res.Value}");
+                res => $"{res}");
             names = attributes;
             return error;
         }
@@ -315,13 +315,14 @@ namespace CassandraFS
                 _ => throw new ArgumentOutOfRangeException(nameof(error), error, null)
             };
 
-        private (Errno, T) WithLogging<T>(Func<Result<T>> func, string context, Func<Result<T>, string> logResult)
+        private (Errno Error, T Value) WithLogging<T>(Func<Result<T>> func, string context, Func<T, string> logResult = null)
         {
             logger.Info($"{context} starts");
             try
             {
                 var result = func();
-                logger.Info($"{context} -> {result.ErrorType}; {logResult(result)}");
+                var loggedResult = logResult == null ? "" : logResult(result.Value);
+                logger.Info($"{context} -> {result.ErrorType}; {loggedResult}");
                 return (ToErrno(result.ErrorType), result.Value);
             }
             catch (Exception e)
@@ -332,22 +333,6 @@ namespace CassandraFS
         }
 
         private Errno WithLogging(Func<Result> func, string context)
-        {
-            logger.Info($"{context} starts");
-            try
-            {
-                var result = func();
-                logger.Info($"{context} -> {result.ErrorType}");
-                return ToErrno(result.ErrorType);
-            }
-            catch (Exception e)
-            {
-                logger.Error($"{context} -> error: {e.Message}, {e.StackTrace}");
-                return Errno.ENOSYS;
-            }
-        }
-
-        private Errno WithLogging<T>(Func<Result<T>> func, string context)
         {
             logger.Info($"{context} starts");
             try

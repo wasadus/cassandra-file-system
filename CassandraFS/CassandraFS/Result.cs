@@ -52,7 +52,7 @@ namespace CassandraFS
     {
         public Result(TValue value)
         {
-            this.value = value;
+            Value = value;
         }
 
         public Result(FileSystemError? errorType)
@@ -67,26 +67,15 @@ namespace CassandraFS
 
         public Result<TOutput> Then<TOutput>(Func<TValue, Result<TOutput>> continuation)
         {
-            return IsSuccessful() ? continuation(value) : Result.Fail<TOutput>(ErrorType);
+            return IsSuccessful() ? continuation(Value) : Result.Fail<TOutput>(ErrorType);
         }
 
         public Result Then(Func<TValue, Result> continuation)
         {
-            return IsSuccessful() ? continuation(value) : Result.Fail(ErrorType);
+            return IsSuccessful() ? continuation(Value) : Result.Fail(ErrorType);
         }
 
-        public TValue Value
-        {
-            get
-            {
-                if (IsSuccessful())
-                    return value;
-
-                throw new InvalidOperationException($"Result isn't successful. Error type: {ErrorType}");
-            }
-        }
-
-        private readonly TValue value = default!;
+        public TValue Value { get; }
 
         public FileSystemError? ErrorType { get; }
 
