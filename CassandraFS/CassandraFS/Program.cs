@@ -1,10 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
-using System.Net;
-using System.Threading;
-
-using Cassandra;
 
 using GroboContainer.Core;
 using GroboContainer.Impl;
@@ -30,7 +25,10 @@ namespace CassandraFS
             container.Configurator.ForAbstraction<ILog>().UseInstances(logger);
 
             var config = JsonConvert.DeserializeObject<Config>(File.ReadAllText("config.json"));
-            config.DefaultTTL ??= new TimeSpan(14, 0, 0, 0).Seconds;
+            if (!config.DefaultTTL.HasValue || config.DefaultTTL.Value == 0)
+            {
+                config.DefaultTTL = new TimeSpan(14, 0, 0, 0).Seconds;
+            }
             config.DefaultDataBufferSize ??= 2048;
             container.Configurator.ForAbstraction<Config>().UseInstances(config);
 
