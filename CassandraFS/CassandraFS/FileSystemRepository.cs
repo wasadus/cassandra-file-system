@@ -160,7 +160,7 @@ namespace CassandraFS
         private Result CheckFileParentDirectory(string path)
         {
             return IsDirectoryValid(GetParentDirectory(path))
-                .Then(() => directoryRepository.IsDirectoryExists(path) ? Result.Fail(FileSystemError.IsDirectory) : Result.Ok());
+                .Check(() => !directoryRepository.IsDirectoryExists(path), FileSystemError.IsDirectory);
         }
 
         public Result<FileModel> ReadFile(string path)
@@ -179,7 +179,7 @@ namespace CassandraFS
         {
             var parentDirPath = GetParentDirectory(path);
             return IsDirectoryValid(parentDirPath)
-                   .Then(() => fileRepository.IsFileExists(path) ? Result.Fail(FileSystemError.AlreadyExist) : Result.Ok())
+                   .Check(() => !fileRepository.IsFileExists(path), FileSystemError.AlreadyExist)
                    .Then(() =>
                        {
                            var fileName = GetFileName(path);
@@ -205,7 +205,7 @@ namespace CassandraFS
         public Result DeleteFile(string path)
         {
             return IsDirectoryValid(GetParentDirectory(path))
-                   .Then(() => fileRepository.IsFilesExists(path) ? Result.Ok() : Result.Fail(FileSystemError.NoEntry))
+                   .Check(() => fileRepository.IsFileExists(path), FileSystemError.NoEntry)
                    .Then(() =>
                        {
                            fileRepository.DeleteFile(path);
@@ -216,8 +216,8 @@ namespace CassandraFS
         public Result RenameFile(string from, string to)
         {
             return ReadFile(from)
-                   .Then(file => directoryRepository.IsDirectoryExists(to) ? Result.Fail(FileSystemError.IsDirectory) : Result.Ok(file))
-                   .Then(file => fileRepository.IsFileExists(to) ? Result.Fail(FileSystemError.AlreadyExist) : Result.Ok(file))
+                   .Check(file => !directoryRepository.IsDirectoryExists(to), FileSystemError.IsDirectory)
+                   .Check(file => !fileRepository.IsFileExists(to), FileSystemError.AlreadyExist)
                    .Then(file =>
                        {
                            fileRepository.DeleteFile(from);
@@ -337,21 +337,22 @@ namespace CassandraFS
 
         public Result GetAccessToPath(string path, AccessModes mode)
         {
-            return GetFileSystemEntry(path).Then(entry =>
-                {
-                    var permissions = entry.FilePermissions;
-                    var fileUID = entry.UID;
-                    var fileGID = entry.GID;
-                    var userUID = Syscall.getuid();
-                    var userGID = Syscall.getgid();
-                    if (((AccessModes.R_OK & mode) != 0 && !permissions.CanUserRead(userUID, userGID, fileUID, fileGID))
-                        || ((AccessModes.W_OK & mode) != 0 && !permissions.CanUserWrite(userUID, userGID, fileUID, fileGID))
-                        || ((AccessModes.X_OK & mode) != 0 && !permissions.CanUserExecute(userUID, userGID, fileUID, fileGID)))
+            return GetFileSystemEntry(path)
+                .Then(entry =>
                     {
-                        return Result.Fail(FileSystemError.AccessDenied);
-                    }
-                    return Result.Ok();
-                });
+                        var permissions = entry.FilePermissions;
+                        var fileUID = entry.UID;
+                        var fileGID = entry.GID;
+                        var userUID = Syscall.getuid();
+                        var userGID = Syscall.getgid();
+                        if (((AccessModes.R_OK & mode) != 0 && !permissions.CanUserRead(userUID, userGID, fileUID, fileGID))
+                            || ((AccessModes.W_OK & mode) != 0 && !permissions.CanUserWrite(userUID, userGID, fileUID, fileGID))
+                            || ((AccessModes.X_OK & mode) != 0 && !permissions.CanUserExecute(userUID, userGID, fileUID, fileGID)))
+                        {
+                            return Result.Fail(FileSystemError.AccessDenied);
+                        }
+                        return Result.Ok();
+                    });
         }
 
         public Result<Statvfs> GetFileSystemStatus(string path)
@@ -410,7 +411,7 @@ namespace CassandraFS
 
         private Result IsDirectoryValid(string directory)
         {
-            return directoryRepository.IsDirectoriesExists(directory)
+            return directoryRepository.IsDirectoryExists(directory)
                        ? Result.Ok()
                        : Result.Fail(fileRepository.IsFileExists(directory) ? FileSystemError.NotDirectory : FileSystemError.NoEntry);
         }
