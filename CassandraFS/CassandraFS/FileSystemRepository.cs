@@ -37,7 +37,7 @@ namespace CassandraFS
             var parentDirPath = Path.GetDirectoryName(path);
             if (parentDirPath == null || rootDirPaths.Contains(parentDirPath) || rootDirPaths.Contains(path))
             {
-                parentDirPath = "/";
+                parentDirPath = Path.DirectorySeparatorChar.ToString();
             }
 
             return parentDirPath;
