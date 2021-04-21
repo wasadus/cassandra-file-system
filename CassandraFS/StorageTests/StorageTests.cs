@@ -90,7 +90,7 @@ namespace StorageTests
             actualFile.FilePermissions.Should().HaveFlag(FilePermissions.S_IFREG);
             actualFile.GID.Should().Be(0);
             actualFile.UID.Should().Be(0);
-            actualFile.ModifiedTimestamp.Should().Be(now);
+            actualFile.ModifiedTimestamp.Should().BeCloseTo(now);
         }
 
         [Test]
@@ -121,7 +121,7 @@ namespace StorageTests
             actualFile.FilePermissions.Should().HaveFlag(FilePermissions.S_IFREG);
             actualFile.GID.Should().Be(0);
             actualFile.UID.Should().Be(0);
-            actualFile.ModifiedTimestamp.Should().Be(now);
+            actualFile.ModifiedTimestamp.Should().BeCloseTo(now);
         }
     }
 }
