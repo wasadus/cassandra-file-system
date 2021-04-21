@@ -2,8 +2,6 @@ version: '3.3'
 
 services:
     cassandra:
-        build:
-            dockerfile: Dockerfile.test
         restart: always
         image: cassandra
         ports:
