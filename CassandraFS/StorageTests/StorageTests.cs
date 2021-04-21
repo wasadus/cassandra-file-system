@@ -85,7 +85,39 @@ namespace StorageTests
             actualFile.Name.Should().Be("test.txt");
             actualFile.Path.Should().Be("/");
             actualFile.Data.Should().BeEquivalentTo(data);
-            actualFile.ExtendedAttributes.Attributes.Should().Contain("attr", Encoding.UTF8.GetBytes("value"));
+            actualFile.ExtendedAttributes.Attributes.Keys.Should().Contain("attr");
+            actualFile.ExtendedAttributes.Attributes.Values.Should().Contain(Encoding.UTF8.GetBytes("value"));
+            actualFile.FilePermissions.Should().HaveFlag(FilePermissions.S_IFREG);
+            actualFile.GID.Should().Be(0);
+            actualFile.UID.Should().Be(0);
+            actualFile.ModifiedTimestamp.Should().Be(now);
+        }
+
+        [Test]
+        public void TestWriteEmptyFile()
+        {
+            ConfigureContainer(60, true, 1024);
+            var now = DateTimeOffset.Now;
+            var file = new FileModel
+                {
+                    Name = "test.txt",
+                    Path = "/",
+                    ExtendedAttributes = new ExtendedAttributes
+                        {
+                            Attributes = new Dictionary<string, byte[]> { { "attr", Encoding.UTF8.GetBytes("value") } }
+                        },
+                    FilePermissions = FilePermissions.S_IFREG,
+                    GID = 0,
+                    UID = 0,
+                    ModifiedTimestamp = now
+                };
+            fileRepository.WriteFile(file);
+            var actualFile = fileRepository.ReadFile("/test.txt");
+            actualFile.Name.Should().Be("test.txt");
+            actualFile.Path.Should().Be("/");
+            actualFile.Data.Should().BeNullOrEmpty();
+            actualFile.ExtendedAttributes.Attributes.Keys.Should().Contain("attr");
+            actualFile.ExtendedAttributes.Attributes.Values.Should().Contain(Encoding.UTF8.GetBytes("value"));
             actualFile.FilePermissions.Should().HaveFlag(FilePermissions.S_IFREG);
             actualFile.GID.Should().Be(0);
             actualFile.UID.Should().Be(0);
