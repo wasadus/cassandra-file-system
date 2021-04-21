@@ -33,23 +33,19 @@ echo "configuration: $CONFIGURATION"
 
 echo "building fs..."
 build_fs
-err = $?
-if [ err -eq 0 ]
+if [ $? -eq 0 ]
 then
 	echo "building fs ok"
 else
 	echo "building fs failed"
-	return $err
 fi
 
 echo "building tests..."
 build_tests
-err = $?
 
-if [ err -eq 0 ]
+if [ $? -eq 0 ]
 then
 	echo "building tests ok"
 else
 	echo "building tests failed"
 fi
-return $err
