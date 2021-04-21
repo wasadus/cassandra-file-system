@@ -8,8 +8,23 @@ run_fuse() {
   done
 }
 
+run_tests() {
+  while true;
+  do
+	dotnet test CassandraFS/CassandraFS.sln
+	sleep 2
+  done
+}
+
 mkdir /home/cassandra-fs
 
-run_fuse &
-proftpd --nodaemon
+if [ $TESTING -eq 1 ]
+then
+  run_fuse &
+  proftpd --nodaemon &
+  run_tests
+else
+  run_fuse &
+  proftpd --nodaemon
+
 # /run.sh -l puredb:/etc/pure-ftpd/pureftpd.pdb -E -j -R -P $PUBLICHOST
