@@ -3,7 +3,7 @@ version: '3.3'
 services:
     cassandra:
         build:
-            dockerfile: Dockerfile
+            dockerfile: Dockerfile.test
         restart: always
         image: cassandra
         ports:
@@ -13,7 +13,7 @@ services:
             - CASSANDRA_LISTEN_ADDRESS=127.0.0.1
     filesystem:
         build:
-            dockerfile: Dockerfile
+            dockerfile: Dockerfile.test
         depends_on:
             - cassandra
         build: .
