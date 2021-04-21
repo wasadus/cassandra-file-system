@@ -86,7 +86,7 @@ namespace StorageTests
             actualFile.Path.Should().Be("/");
             actualFile.Data.Should().BeEquivalentTo(data);
             actualFile.ExtendedAttributes.Attributes.Keys.Should().Contain("attr");
-            actualFile.ExtendedAttributes.Attributes.Values.Should().Contain(Encoding.UTF8.GetBytes("value"));
+            actualFile.ExtendedAttributes.Attributes["attr"].Should().BeEquivalentTo(Encoding.UTF8.GetBytes("value"));
             actualFile.FilePermissions.Should().HaveFlag(FilePermissions.S_IFREG);
             actualFile.GID.Should().Be(0);
             actualFile.UID.Should().Be(0);
@@ -117,7 +117,7 @@ namespace StorageTests
             actualFile.Path.Should().Be("/");
             actualFile.Data.Should().BeNullOrEmpty();
             actualFile.ExtendedAttributes.Attributes.Keys.Should().Contain("attr");
-            actualFile.ExtendedAttributes.Attributes.Values.Should().Contain(Encoding.UTF8.GetBytes("value"));
+            actualFile.ExtendedAttributes.Attributes["attr"].Should().BeEquivalentTo(Encoding.UTF8.GetBytes("value"));
             actualFile.FilePermissions.Should().HaveFlag(FilePermissions.S_IFREG);
             actualFile.GID.Should().Be(0);
             actualFile.UID.Should().Be(0);

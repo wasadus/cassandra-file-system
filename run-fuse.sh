@@ -26,5 +26,5 @@ then
 else
   run_fuse &
   proftpd --nodaemon
-
+fi
 # /run.sh -l puredb:/etc/pure-ftpd/pureftpd.pdb -E -j -R -P $PUBLICHOST
