@@ -20,11 +20,6 @@ build_fs () {
     dotnet build CassandraFS/CassandraFS/CassandraFS.csproj -c "$CONFIGURATION"
 }
 
-build_tests () {
-	dotnet build CassandraFS/StorageTests/StorageTests.csproj -c "$CONFIGURATION"
-	dotnet build CassandraFS/FileSystemTests/FileSystemTests.csproj -c "$CONFIGURATION"
-}
-
 assert_exists dotnet
 echo "dotnet ok"
 
@@ -38,14 +33,4 @@ then
 	echo "building fs ok"
 else
 	echo "building fs failed"
-fi
-
-echo "building tests..."
-build_tests
-
-if [ $? -eq 0 ]
-then
-	echo "building tests ok"
-else
-	echo "building tests failed"
 fi
