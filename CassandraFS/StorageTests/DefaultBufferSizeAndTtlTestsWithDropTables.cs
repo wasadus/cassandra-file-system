@@ -23,7 +23,7 @@ using Vostok.Logging.File.Configuration;
 
 namespace StorageTests
 {
-    public class DefaultBufferSizeAndTTLTestsWithDropTables
+    public class DefaultBufferSizeAndTtlTestsWithDropTables
     {
         private DirectoryRepository directoryRepository;
         private FileRepository fileRepository;
