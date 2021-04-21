@@ -1,5 +1,6 @@
 ﻿using System;
-using System.IO;
+using System.Collections.Generic;
+using System.Text;
 
 using CassandraFS;
 using CassandraFS.CassandraHandler;
@@ -10,7 +11,7 @@ using FluentAssertions;
 using GroboContainer.Core;
 using GroboContainer.Impl;
 
-using Newtonsoft.Json;
+using Mono.Unix.Native;
 
 using NUnit.Framework;
 
@@ -25,49 +26,70 @@ namespace StorageTests
     {
         private DirectoryRepository directoryRepository;
         private FileRepository fileRepository;
-        [SetUp]
-        public void Setup()
+        private Container container;
+
+        private void ConfigureContainer(int TTL, bool dropTables, int bufferSize)
         {
             var configuration = new ContainerConfiguration(typeof(CassandraFileSystem).Assembly);
-            var container = new Container(configuration);
-
+            container = new Container(configuration);
             var settings = new FileLogSettings();
             var logger = new CompositeLog(new ConsoleLog(), new FileLog(settings));
             container.Configurator.ForAbstraction<ILog>().UseInstances(logger);
+            var config = new Config
+                {
+                    CassandraEndPoints = new List<NodeSettings> {new NodeSettings {Host = "cassandra"}},
+                    MessageSpaceName = "TestMessageSpace",
+                    DropFilesTable = dropTables,
+                    DropDirectoriesTable = dropTables,
+                    DropFilesContentMetaTable = dropTables,
+                    DropFilesContentTable = dropTables,
+                    DefaultDataBufferSize = bufferSize,
+                    DefaultTTL = TTL,
+                    ConnectionAttemptsCount = 5,
+                    ReconnectTimeout = 5000
+                };
 
-            var configJson = @"
-{
-  ""CassandraEndPoints"": [
-    {
-      ""Host"": ""cassandra""
-    }
-  ],
-  ""MessageSpaceName"": ""FTPMessageSpace"",
-  ""DropFilesTable"": false,
-  ""DropFilesContentTable"": false,
-  ""DropFilesContentMetaTable"": false,
-  ""DropDirectoriesTable"": false,
-  ""ConnectionAttemptsCount"": 5,
-  ""ReconnectTimeout"": 5000,
-  ""DefaultTTL"": null,
-  ""DefaultDataBufferSize"": 2048
-}
-               ";
-            var config = JsonConvert.DeserializeObject<Config>(configJson);
-            config.DefaultTTL ??= new TimeSpan(1, 0, 0, 0).Seconds;
-            config.DefaultDataBufferSize ??= 2048;
             container.Configurator.ForAbstraction<Config>().UseInstances(config);
             CassandraConfigurator.ConfigureCassandra(container, logger);
             directoryRepository = container.Get<DirectoryRepository>();
             fileRepository = container.Get<FileRepository>();
         }
 
-        [Test]
-        public void Test1()
+        [SetUp]
+        public void Setup()
         {
-            fileRepository.WriteFile(new FileModel(){});
-            var file = fileRepository.ReadFile("");
-            file.Name.Should().BeNull();
+        }
+
+        [Test]
+        public void TestWriteValidFile()
+        {
+            ConfigureContainer(60, true, 1024);
+            var data = Encoding.UTF8.GetBytes("SomeData");
+            var now = DateTimeOffset.Now;
+            var file = new FileModel
+                {
+                    Name = "test.txt",
+                    Path = "/",
+                    ExtendedAttributes = new ExtendedAttributes
+                        {
+                            Attributes = new Dictionary<string, byte[]> {{"attr", Encoding.UTF8.GetBytes("value")}}
+                        },
+                    Data = data,
+                    FilePermissions = FilePermissions.S_IFREG,
+                    GID = 0,
+                    UID = 0,
+                    ModifiedTimestamp = now
+                };
+            fileRepository.WriteFile(file);
+            var actualFile = fileRepository.ReadFile("/test.txt");
+            actualFile.Name.Should().Be("test.txt");
+            actualFile.Path.Should().Be("/");
+            actualFile.Data.Should().BeEquivalentTo(data);
+            actualFile.ExtendedAttributes.Attributes.Should().Contain("attr", Encoding.UTF8.GetBytes("value"));
+            actualFile.FilePermissions.Should().HaveFlag(FilePermissions.S_IFREG);
+            actualFile.GID.Should().Be(0);
+            actualFile.UID.Should().Be(0);
+            actualFile.ModifiedTimestamp.Should().Be(now);
         }
     }
 }
