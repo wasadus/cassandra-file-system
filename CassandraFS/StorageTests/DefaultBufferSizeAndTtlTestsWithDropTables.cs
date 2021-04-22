@@ -134,7 +134,7 @@ namespace StorageTests
         public void TestReplaceFile()
         {
             var now = DateTimeOffset.Now;
-            WriteValidDirectory(now);
+            WriteValidFile(defaultFileData, defaultFileAttributes, now);
             now = DateTimeOffset.Now;
             var newData = Encoding.UTF8.GetBytes("New data");
             var newAttributes = new ExtendedAttributes {Attributes = new Dictionary<string, byte[]> {{"first", newData}}};
@@ -174,6 +174,52 @@ namespace StorageTests
             actualDirectory.GID.Should().Be(1);
             actualDirectory.UID.Should().Be(1);
             actualDirectory.ModifiedTimestamp.Should().BeCloseTo(now);
+        }
+
+        [Test]
+        public void TestReadNotExistingFile()
+        {
+            fileRepository.IsFileExists(defaultFilePath + defaultFileName).Should().Be(false);
+            var now = DateTimeOffset.Now;
+            WriteValidFile(defaultFileData, defaultFileAttributes, now);
+            fileRepository.IsFileExists(defaultFilePath + defaultFileName).Should().Be(true);
+        }
+
+        [Test]
+        public void TestReadNotExistingDirectory()
+        {
+            directoryRepository.IsDirectoryExists(defaultDirPath + defaultDirName).Should().Be(false);
+            var now = DateTimeOffset.Now;
+            WriteValidDirectory(now);
+            directoryRepository.IsDirectoryExists(defaultDirPath + defaultDirName).Should().Be(true);
+        }
+
+        [Test]
+        public void TestReadFileStat()
+        {
+            var now = DateTimeOffset.Now;
+            WriteValidFile(defaultFileData, defaultFileAttributes, now);
+            var fileStat = fileRepository.ReadFile(defaultFilePath + defaultFileName).GetStat();
+            fileStat.st_mtim.Should().BeEquivalentTo(now.ToTimespec());
+            fileStat.st_mode.Should().HaveFlag(defaultFilePermissions);
+            fileStat.st_nlink.Should().BePositive();
+            fileStat.st_size.Should().Be(defaultFileData.Length);
+            fileStat.st_gid.Should().Be(0);
+            fileStat.st_uid.Should().Be(0);
+        }
+
+        [Test]
+        public void TestReadDirectoryStat()
+        {
+            var now = DateTimeOffset.Now;
+            WriteValidDirectory(now);
+            var directoryStat = directoryRepository.ReadDirectory(defaultDirPath + defaultDirName).GetStat();
+            directoryStat.st_mtim.Should().BeEquivalentTo(now.ToTimespec());
+            directoryStat.st_mode.Should().HaveFlag(defaultDirPermissions);
+            directoryStat.st_nlink.Should().BePositive();
+            directoryStat.st_size.Should().BePositive();
+            directoryStat.st_gid.Should().Be(0);
+            directoryStat.st_uid.Should().Be(0);
         }
 
         private void WriteValidFile(
