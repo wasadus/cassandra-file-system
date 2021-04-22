@@ -152,7 +152,7 @@ namespace StorageTests
             actualFile.Path.Should().Be(defaultFilePath);
             actualFile.Data.Should().BeEquivalentTo(newData);
             actualFile.ExtendedAttributes.Attributes.Keys.Should().Contain("first");
-            actualFile.ExtendedAttributes.Attributes["attr"].Should().BeEquivalentTo(newData);
+            actualFile.ExtendedAttributes.Attributes["first"].Should().BeEquivalentTo(newData);
             actualFile.FilePermissions.Should().HaveFlag(newPermissions);
             actualFile.GID.Should().Be(1);
             actualFile.UID.Should().Be(1);
