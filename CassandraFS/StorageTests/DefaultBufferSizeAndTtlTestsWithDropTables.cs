@@ -75,52 +75,6 @@ namespace StorageTests
             fileRepository = container.Get<FileRepository>();
         }
 
-        public void WriteValidFile(
-            byte[] fileData,
-            ExtendedAttributes attributes,
-            DateTimeOffset modifiedTimeStamp,
-            string path = "/",
-            string name = "test.file",
-            FilePermissions permissions = FilePermissions.S_IFREG,
-            uint gid = 0,
-            uint uid = 0
-        )
-        {
-            var file = new FileModel
-                {
-                    Name = name,
-                    Path = path,
-                    ExtendedAttributes = attributes,
-                    Data = fileData,
-                    FilePermissions = permissions,
-                    GID = gid,
-                    UID = uid,
-                    ModifiedTimestamp = modifiedTimeStamp
-                };
-            fileRepository.WriteFile(file);
-        }
-
-        public void WriteValidDirectory(
-            DateTimeOffset modifiedTimeStamp,
-            string path = "/",
-            string name = "testdir",
-            FilePermissions permissions = FilePermissions.S_IFDIR,
-            uint uid = 0,
-            uint gid = 0
-        )
-        {
-            var directory = new DirectoryModel
-                {
-                    Name = name,
-                    Path = path,
-                    FilePermissions = permissions,
-                    GID = gid,
-                    UID = uid,
-                    ModifiedTimestamp = modifiedTimeStamp
-                };
-            directoryRepository.WriteDirectory(directory);
-        }
-
         [Test]
         public void TestWriteValidFile()
         {
@@ -174,6 +128,98 @@ namespace StorageTests
             actualDirectory.GID.Should().Be(defaultDirGID);
             actualDirectory.UID.Should().Be(defaultDirUID);
             actualDirectory.ModifiedTimestamp.Should().BeCloseTo(now);
+        }
+
+        [Test]
+        public void TestReplaceFile()
+        {
+            var now = DateTimeOffset.Now;
+            WriteValidDirectory(now);
+            now = DateTimeOffset.Now;
+            var newData = Encoding.UTF8.GetBytes("New data");
+            var newAttributes = new ExtendedAttributes {Attributes = new Dictionary<string, byte[]> {{"first", newData}}};
+            var newPermissions = FilePermissions.S_IFREG | FilePermissions.ACCESSPERMS;
+            WriteValidFile(
+                newData,
+                newAttributes,
+                now,
+                permissions : newPermissions,
+                gid : 1,
+                uid : 1
+            );
+            var actualFile = fileRepository.ReadFile(defaultFilePath + defaultFileName);
+            actualFile.Name.Should().Be(defaultFileName);
+            actualFile.Path.Should().Be(defaultFilePath);
+            actualFile.Data.Should().BeEquivalentTo(newData);
+            actualFile.ExtendedAttributes.Attributes.Keys.Should().Contain("first");
+            actualFile.ExtendedAttributes.Attributes["attr"].Should().BeEquivalentTo(newData);
+            actualFile.FilePermissions.Should().HaveFlag(newPermissions);
+            actualFile.GID.Should().Be(1);
+            actualFile.UID.Should().Be(1);
+            actualFile.ModifiedTimestamp.Should().BeCloseTo(now);
+        }
+
+        [Test]
+        public void TestReplaceDirectory()
+        {
+            var now = DateTimeOffset.Now;
+            WriteValidDirectory(now);
+            var newPermissions = FilePermissions.S_IFDIR | FilePermissions.ACCESSPERMS;
+            now = DateTimeOffset.Now;
+            WriteValidDirectory(now, permissions : newPermissions, gid : 1, uid : 1);
+            var actualDirectory = directoryRepository.ReadDirectory(defaultDirPath + defaultDirName);
+            actualDirectory.Name.Should().Be(defaultDirName);
+            actualDirectory.Path.Should().Be(defaultDirPath);
+            actualDirectory.FilePermissions.Should().HaveFlag(newPermissions);
+            actualDirectory.GID.Should().Be(1);
+            actualDirectory.UID.Should().Be(1);
+            actualDirectory.ModifiedTimestamp.Should().BeCloseTo(now);
+        }
+
+        private void WriteValidFile(
+            byte[] fileData,
+            ExtendedAttributes attributes,
+            DateTimeOffset modifiedTimeStamp,
+            string path = "/",
+            string name = "test.file",
+            FilePermissions permissions = FilePermissions.S_IFREG,
+            uint gid = 0,
+            uint uid = 0
+        )
+        {
+            var file = new FileModel
+                {
+                    Name = name,
+                    Path = path,
+                    ExtendedAttributes = attributes,
+                    Data = fileData,
+                    FilePermissions = permissions,
+                    GID = gid,
+                    UID = uid,
+                    ModifiedTimestamp = modifiedTimeStamp
+                };
+            fileRepository.WriteFile(file);
+        }
+
+        private void WriteValidDirectory(
+            DateTimeOffset modifiedTimeStamp,
+            string path = "/",
+            string name = "testdir",
+            FilePermissions permissions = FilePermissions.S_IFDIR,
+            uint uid = 0,
+            uint gid = 0
+        )
+        {
+            var directory = new DirectoryModel
+                {
+                    Name = name,
+                    Path = path,
+                    FilePermissions = permissions,
+                    GID = gid,
+                    UID = uid,
+                    ModifiedTimestamp = modifiedTimeStamp
+                };
+            directoryRepository.WriteDirectory(directory);
         }
     }
 }
