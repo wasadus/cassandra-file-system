@@ -99,21 +99,31 @@ namespace CassandraFS
                    .Then(fromDirectory =>
                        {
                            directoryRepository.DeleteDirectory(from);
-                           fromDirectory.Path = GetParentDirectory(to);
                            fromDirectory.Name = GetFileName(to);
+                           fromDirectory.Path = GetParentDirectory(to);
+                           fromDirectory.ModifiedTimestamp = DateTimeOffset.Now;
                            directoryRepository.WriteDirectory(fromDirectory);
-                           foreach (var directory in directoryRepository.GetTree(from))
+
+                           GetTree(fromDirectory, out var directoriesToRename, out var filesToRename);
+                           foreach (var file in filesToRename)
                            {
-                               //TODO Check pathtofile = path + name
-                               directoryRepository.DeleteDirectory(directory.Path + directory.Name);
-                               directory.Path = directory.Path.Replace(from, to);
-                               directoryRepository.WriteDirectory(directory);
-                           }
-                           foreach (var file in fileRepository.GetTree(from))
-                           {
-                               fileRepository.DeleteFile(file.Path + file.Name);
+                               var filePath = file.Path == Path.DirectorySeparatorChar.ToString()
+                                                  ? file.Path + file.Name
+                                                  : file.Path + Path.DirectorySeparatorChar + file.Name;
+                               fileRepository.DeleteFile(filePath);
+                               file.ModifiedTimestamp = DateTimeOffset.Now;
                                file.Path = file.Path.Replace(from, to);
                                fileRepository.WriteFile(file);
+                           }
+                           foreach (var directory in directoriesToRename)
+                           {
+                               var directoryPath = directory.Path == Path.DirectorySeparatorChar.ToString()
+                                                  ? directory.Path + directory.Name
+                                                  : directory.Path + Path.DirectorySeparatorChar + directory.Name;
+                               directoryRepository.DeleteDirectory(directoryPath);
+                               directory.ModifiedTimestamp = DateTimeOffset.Now;
+                               directory.Path = directory.Path.Replace(from, to);
+                               directoryRepository.WriteDirectory(directory);
                            }
                            return Result.Ok();
                        });
@@ -418,6 +428,30 @@ namespace CassandraFS
             return directoryRepository.IsDirectoryExists(directory)
                        ? Result.Ok()
                        : Result.Fail(fileRepository.IsFileExists(directory) ? FileSystemError.NotDirectory : FileSystemError.NoEntry);
+        }
+
+        private void GetTree(DirectoryModel rootDirectory, out List<DirectoryModel> directories, out List<FileModel> files)
+        {
+            var directoriesToVisit = new Queue<DirectoryModel>();
+            directoriesToVisit.Enqueue(rootDirectory);
+            directories = new List<DirectoryModel>();
+            files = new List<FileModel>();
+            while (directoriesToVisit.Count != 0)
+            {
+                var currentDirectory = directoriesToVisit.Dequeue();
+                var currentDirectoryPath =
+                    currentDirectory.Path == Path.DirectorySeparatorChar.ToString()
+                        ? Path.DirectorySeparatorChar + currentDirectory.Name
+                        : currentDirectory.Path + Path.DirectorySeparatorChar + currentDirectory.Name;
+                var childDirectories = directoryRepository.GetChildDirectories(currentDirectoryPath);
+                foreach (var directory in childDirectories)
+                {
+                    directoriesToVisit.Enqueue(directory);
+                    directories.Add(directory);
+                }
+                var childFiles = fileRepository.GetChildFiles(currentDirectoryPath);
+                files.AddRange(childFiles);
+            }
         }
     }
 }

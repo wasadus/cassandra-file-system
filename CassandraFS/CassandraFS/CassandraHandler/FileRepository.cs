@@ -70,11 +70,6 @@ namespace CassandraFS.CassandraHandler
             return fileModel;
         }
 
-        public IEnumerable<FileModel> GetTree(string rootPath)
-        {
-            return filesTableEvent.Where(file => file.Path.StartsWith(rootPath)).Select(file => GetFileModel(file)).Execute();
-        }
-
         public void DeleteFile(string path)
         {
             var fileName = FileSystemRepository.GetFileName(path);
@@ -165,6 +160,23 @@ namespace CassandraFS.CassandraHandler
             if (!contentGuid.HasValue)
                 return;
             blobStorage.TryDelete(contentGuid.ToString(), timestamp);
+        }
+
+        public IEnumerable<FileModel> GetChildFiles(string rootPath)
+        {
+            var files = filesTableEvent
+                        .Where(file => file.Path == rootPath)
+                        .Select(x => GetFileModel(x))
+                        .Execute();
+            var fileModels = files.ToList();
+            foreach (var fileModel in fileModels)
+            {
+                if (fileModel?.ContentGUID != null)
+                {
+                    fileModel.Data = blobStorage.TryRead(fileModel.ContentGUID.Value.ToString());
+                }
+            }
+            return fileModels;
         }
     }
 }
