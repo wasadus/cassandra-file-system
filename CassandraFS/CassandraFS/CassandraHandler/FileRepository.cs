@@ -4,8 +4,10 @@ using System.Linq;
 
 using Cassandra;
 using Cassandra.Data.Linq;
+
 using CassandraFS.BlobStorage;
 using CassandraFS.Models;
+
 using Mono.Fuse.NETStandard;
 using Mono.Unix.Native;
 
@@ -30,9 +32,9 @@ namespace CassandraFS.CassandraHandler
 
         public IEnumerable<DirectoryEntry> ReadDirectoryContent(string path) =>
             filesTableEvent
-                .Where(entry => entry.Path.Equals(path))
+                .Where(entry => entry.Path == path)
                 .Execute()
-                .Select(file => new DirectoryEntry(file.Name) { Stat = GetShortStat(file) });
+                .Select(file => new DirectoryEntry(file.Name) {Stat = GetShortStat(file)});
 
         public bool IsFilesExists(string directoryPath) =>
             filesTableEvent
@@ -60,7 +62,7 @@ namespace CassandraFS.CassandraHandler
             var parentDirPath = FileSystemRepository.GetParentDirectory(path);
             var fileName = FileSystemRepository.GetFileName(path);
             var file = filesTableEvent
-                       .FirstOrDefault(f => f.Path.Equals(parentDirPath) && f.Name.Equals(fileName))
+                       .FirstOrDefault(f => f.Path == parentDirPath && f.Name == fileName)
                        .Execute();
             var fileModel = GetFileModel(file);
             if (file?.ContentGuid != null)
@@ -75,7 +77,7 @@ namespace CassandraFS.CassandraHandler
             var fileName = FileSystemRepository.GetFileName(path);
             var parentDirPath = FileSystemRepository.GetParentDirectory(path);
             var file = filesTableEvent
-                       .FirstOrDefault(d => d.Path.Equals(parentDirPath) && d.Name.Equals(fileName))
+                       .FirstOrDefault(d => d.Path == parentDirPath && d.Name == fileName)
                        .Execute();
             var timestamp = timestampProvider.UpdateTimestamp();
             if (file.ContentGuid.HasValue)
@@ -84,7 +86,7 @@ namespace CassandraFS.CassandraHandler
             }
 
             filesTableEvent
-                .Where(d => d.Path.Equals(parentDirPath) && d.Name.Equals(fileName))
+                .Where(d => d.Path == parentDirPath && d.Name == fileName)
                 .Delete()
                 .SetTimestamp(timestamp)
                 .Execute();
@@ -95,7 +97,7 @@ namespace CassandraFS.CassandraHandler
             var parentDirPath = FileSystemRepository.GetParentDirectory(path);
             var fileName = FileSystemRepository.GetFileName(path);
             var file = filesTableEvent
-                       .Where(f => f.Path.Equals(parentDirPath) && f.Name.Equals(fileName))
+                       .Where(f => f.Path == parentDirPath && f.Name == fileName)
                        .Execute();
             var result = file.Any();
             return result;
@@ -103,17 +105,17 @@ namespace CassandraFS.CassandraHandler
 
         // Если файл большой, то не будет осуществляться запрос к второй таблице и размер будет 0
         private Stat GetShortStat(CQLFile file) => new Stat()
-        {
-            st_nlink = 1,
-            st_mode = (FilePermissions)file.FilePermissions,
-            st_size = file.Data?.LongLength ?? 0,
-            st_blocks = file.Data?.LongLength / 512 ?? 0,
-            st_blksize = file.Data?.LongLength ?? 0, // Optimal size for buffer in I/O operations
-            st_atim = DateTimeOffset.Now.ToTimespec(), // access
-            st_mtim = file.ModifiedTimestamp.ToTimespec(), // modified
-            st_gid = (uint)file.GID,
-            st_uid = (uint)file.UID,
-        };
+            {
+                st_nlink = 1,
+                st_mode = (FilePermissions)file.FilePermissions,
+                st_size = file.Data?.LongLength ?? 0,
+                st_blocks = file.Data?.LongLength / 512 ?? 0,
+                st_blksize = file.Data?.LongLength ?? 0, // Optimal size for buffer in I/O operations
+                st_atim = DateTimeOffset.Now.ToTimespec(), // access
+                st_mtim = file.ModifiedTimestamp.ToTimespec(), // modified
+                st_gid = (uint)file.GID,
+                st_uid = (uint)file.UID,
+            };
 
         private FileModel GetFileModel(CQLFile file) =>
             file == null
@@ -135,15 +137,15 @@ namespace CassandraFS.CassandraHandler
         private CQLFile GetCQLFile(FileModel file)
         {
             var cqlFile = new CQLFile
-            {
-                Path = file.Path,
-                Name = file.Name,
-                ExtendedAttributes = FileExtendedAttributesHandler.SerializeExtendedAttributes(file.ExtendedAttributes),
-                ModifiedTimestamp = file.ModifiedTimestamp,
-                FilePermissions = (int)file.FilePermissions,
-                GID = file.GID,
-                UID = file.UID
-            };
+                {
+                    Path = file.Path,
+                    Name = file.Name,
+                    ExtendedAttributes = FileExtendedAttributesHandler.SerializeExtendedAttributes(file.ExtendedAttributes),
+                    ModifiedTimestamp = file.ModifiedTimestamp,
+                    FilePermissions = (int)file.FilePermissions,
+                    GID = file.GID,
+                    UID = file.UID
+                };
             if (file.Data.Length > dataBufferSize)
             {
                 cqlFile.ContentGuid = file.ContentGUID ?? Guid.NewGuid();

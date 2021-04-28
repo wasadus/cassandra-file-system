@@ -37,7 +37,7 @@ namespace CassandraFS
             var parentDirPath = Path.GetDirectoryName(path);
             if (parentDirPath == null || rootDirPaths.Contains(parentDirPath) || rootDirPaths.Contains(path))
             {
-                parentDirPath = "/";
+                parentDirPath = Path.DirectorySeparatorChar.ToString();
             }
 
             return parentDirPath;
@@ -118,8 +118,8 @@ namespace CassandraFS
                            foreach (var directory in directoriesToRename)
                            {
                                var directoryPath = directory.Path == Path.DirectorySeparatorChar.ToString()
-                                                  ? directory.Path + directory.Name
-                                                  : directory.Path + Path.DirectorySeparatorChar + directory.Name;
+                                                       ? directory.Path + directory.Name
+                                                       : directory.Path + Path.DirectorySeparatorChar + directory.Name;
                                directoryRepository.DeleteDirectory(directoryPath);
                                directory.ModifiedTimestamp = DateTimeOffset.Now;
                                directory.Path = directory.Path.Replace(from, to);
