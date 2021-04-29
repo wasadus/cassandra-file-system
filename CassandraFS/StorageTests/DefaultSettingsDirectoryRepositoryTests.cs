@@ -17,77 +17,87 @@ namespace StorageTests
         [Test]
         public void TestWriteValidDirectory()
         {
-            var now = DateTimeOffset.Now;
-            WriteValidDirectory(now);
-            var actualDirectory = directoryRepository.ReadDirectory(defaultDirPath + defaultDirName);
-            actualDirectory.Name.Should().Be(defaultDirName);
-            actualDirectory.Path.Should().Be(defaultDirPath);
-            actualDirectory.FilePermissions.Should().HaveFlag(defaultDirPermissions);
-            actualDirectory.GID.Should().Be(defaultDirGID);
-            actualDirectory.UID.Should().Be(defaultDirUID);
-            actualDirectory.ModifiedTimestamp.Should().BeCloseTo(now);
+            var directory = GetTestDirectoryModel(Path.DirectorySeparatorChar.ToString());
+            directoryRepository.WriteDirectory(directory);
+            var actualDirectory = directoryRepository.ReadDirectory(directory.Path + directory.Name);
+            CompareDirectoryModel(directory, actualDirectory);
         }
 
         [Test]
         public void TestReplaceDirectory()
         {
-            var now = DateTimeOffset.Now;
-            WriteValidDirectory(now);
-            var newPermissions = FilePermissions.S_IFDIR | FilePermissions.ACCESSPERMS;
-            now = DateTimeOffset.Now;
-            WriteValidDirectory(now, permissions : newPermissions, gid : 1, uid : 1);
-            var actualDirectory = directoryRepository.ReadDirectory(defaultDirPath + defaultDirName);
-            actualDirectory.Name.Should().Be(defaultDirName);
-            actualDirectory.Path.Should().Be(defaultDirPath);
-            actualDirectory.FilePermissions.Should().HaveFlag(newPermissions);
-            actualDirectory.GID.Should().Be(1);
-            actualDirectory.UID.Should().Be(1);
-            actualDirectory.ModifiedTimestamp.Should().BeCloseTo(now);
+            var directory = GetTestDirectoryModel(Path.DirectorySeparatorChar.ToString());
+            directoryRepository.WriteDirectory(directory);
+            directory.FilePermissions = FilePermissions.S_IFDIR | FilePermissions.ACCESSPERMS;
+            directory.GID = 1;
+            directory.UID = 1;
+            directoryRepository.WriteDirectory(directory);
+            var actualDirectory = directoryRepository.ReadDirectory(directory.Path + directory.Name);
+            CompareDirectoryModel(directory, actualDirectory);
         }
 
         [Test]
         public void TestReadNotExistingDirectory()
         {
-            directoryRepository.IsDirectoryExists(defaultDirPath + defaultDirName).Should().Be(false);
-            var now = DateTimeOffset.Now;
-            WriteValidDirectory(now);
-            directoryRepository.IsDirectoryExists(defaultDirPath + defaultDirName).Should().Be(true);
+            var directory = GetTestDirectoryModel(Path.DirectorySeparatorChar.ToString());
+            directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().Be(false);
+            directoryRepository.WriteDirectory(directory);
+            directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().Be(true);
         }
 
         [Test]
         public void TestReadDirectoryStat()
         {
-            var now = DateTimeOffset.Now;
-            WriteValidDirectory(now);
-            var directoryStat = directoryRepository.ReadDirectory(defaultDirPath + defaultDirName).GetStat();
-            // todo (z.yarin, 22.04.2021): Сравнивать время изменения
-            directoryStat.st_mtim.tv_sec.Should().BeCloseTo(now.ToTimespec().tv_sec, 1000);
-            directoryStat.st_mtim.tv_nsec.Should().BeCloseTo(now.ToTimespec().tv_nsec, 1000000);
-            directoryStat.st_mode.Should().HaveFlag(defaultDirPermissions);
-            directoryStat.st_nlink.Should().BePositive();
-            directoryStat.st_size.Should().BeGreaterOrEqualTo(0);
-            directoryStat.st_gid.Should().Be(0);
-            directoryStat.st_uid.Should().Be(0);
+            var directory = GetTestDirectoryModel(Path.DirectorySeparatorChar.ToString());
+            directoryRepository.WriteDirectory(directory);
+            var actualStat = directoryRepository.ReadDirectory(directory.Path + directory.Name).GetStat();
+            CompareDirectoryStat(directory.GetStat(), actualStat);
         }
 
         [Test]
-        public void TestCreateDirectoryInsideDirectory()
+        public void TestWriteDirectoryInsideDirectory()
         {
+            var root = GetTestDirectoryModel(Path.DirectorySeparatorChar.ToString());
+            var child1 = GetTestDirectoryModel(root.Path + root.Name);
+            var child2 = GetTestDirectoryModel(child1.Path + Path.DirectorySeparatorChar + child1.Name);
+            directoryRepository.WriteDirectory(root);
+            directoryRepository.WriteDirectory(child1);
+            directoryRepository.WriteDirectory(child2);
+            var actualRoot = directoryRepository.ReadDirectory(root.Path + root.Name);
+            var actualChild1 = directoryRepository.ReadDirectory(child1.Path + Path.DirectorySeparatorChar + child1.Name);
+            var actualChild2 = directoryRepository.ReadDirectory(child2.Path + Path.DirectorySeparatorChar + child2.Name);
+            CompareDirectoryModel(root, actualRoot);
+            CompareDirectoryModel(child1, actualChild1);
+            CompareDirectoryModel(child2, actualChild2);
+            CompareDirectoryStat(root.GetStat(), actualRoot.GetStat());
+            CompareDirectoryStat(child1.GetStat(), actualChild1.GetStat());
+            CompareDirectoryStat(child2.GetStat(), actualChild2.GetStat());
         }
 
         [Test]
-        public void TestCreateManyDirectoriesInOneDirectory()
+        public void TestWriteManyDirectoriesInOneDirectory()
         {
-        }
-
-        [Test]
-        public void TestCreateManyDirectories()
-        {
+            var root = GetTestDirectoryModel(Path.DirectorySeparatorChar.ToString());
+            directoryRepository.WriteDirectory(root);
+            var rootPath = root.Path + root.Name;
+            for (var i = 0; i < 50; i++)
+            {
+                var directory = GetTestDirectoryModel(rootPath);
+                directoryRepository.WriteDirectory(directory);
+                var actualDirectory = directoryRepository.ReadDirectory(directory.Path + Path.DirectorySeparatorChar + directory.Name);
+                CompareDirectoryModel(directory, actualDirectory);
+                CompareDirectoryStat(directory.GetStat(), actualDirectory.GetStat());
+            }
         }
 
         [Test]
         public void TestDeleteValidDirectory()
         {
+            var directory = GetTestDirectoryModel(Path.DirectorySeparatorChar.ToString());
+            directoryRepository.WriteDirectory(directory);
+            directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().Be(true);
+            directoryRepository.DeleteDirectory(directory.);
+            directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().Be(true)
         }
 
         [Test]
@@ -95,25 +105,44 @@ namespace StorageTests
         {
         }
 
-        private void WriteValidDirectory(
-            DateTimeOffset modifiedTimeStamp,
-            string path = null,
-            string name = "testdir",
-            FilePermissions permissions = FilePermissions.S_IFDIR,
-            uint uid = 0,
-            uint gid = 0
-        )
+        private DirectoryModel GetTestDirectoryModel(string path, FilePermissions permissions = FilePermissions.S_IFDIR, uint gid = 0, uint uid = 0)
         {
-            var directory = new DirectoryModel
+            return new DirectoryModel()
                 {
-                    Name = name,
-                    Path = path ?? Path.DirectorySeparatorChar.ToString(),
-                    FilePermissions = permissions,
+                    Name = Guid.NewGuid().ToString(),
+                    Path = path,
+                    FilePermissions = FilePermissions.S_IFDIR | permissions,
                     GID = gid,
                     UID = uid,
-                    ModifiedTimestamp = modifiedTimeStamp
+                    ModifiedTimestamp = DateTimeOffset.Now
                 };
-            directoryRepository.WriteDirectory(directory);
+        }
+
+        private void CompareDirectoryModel(DirectoryModel expected, DirectoryModel actual)
+        {
+            if (expected == null && actual == null)
+            {
+                return;
+            }
+            expected.Should().NotBeNull();
+            actual.Should().NotBeNull();
+            actual.Name.Should().Be(expected.Name);
+            actual.Path.Should().Be(expected.Path);
+            actual.GID.Should().Be(expected.GID);
+            actual.UID.Should().Be(expected.UID);
+            actual.ModifiedTimestamp.Should().BeCloseTo(expected.ModifiedTimestamp);
+            actual.FilePermissions.Should().HaveFlag(expected.FilePermissions);
+        }
+
+        private void CompareDirectoryStat(Stat expected, Stat actual)
+        {
+            actual.st_mtim.tv_sec.Should().BeCloseTo(expected.st_mtim.tv_sec, 1000);
+            actual.st_mtim.tv_nsec.Should().BeCloseTo(expected.st_mtim.tv_nsec, 1000000);
+            actual.st_mode.Should().HaveFlag(expected.st_mode);
+            actual.st_nlink.Should().BeGreaterOrEqualTo(expected.st_nlink);
+            actual.st_size.Should().BeGreaterOrEqualTo(expected.st_size);
+            actual.st_gid.Should().Be(expected.st_gid);
+            actual.st_uid.Should().Be(expected.st_uid);
         }
     }
 }
