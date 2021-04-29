@@ -16,6 +16,7 @@ namespace CassandraFS
         private static readonly HashSet<string> rootDirPaths = new HashSet<string> {"", "."};
         private readonly FileRepository fileRepository;
         private readonly DirectoryRepository directoryRepository;
+        private static readonly string rootDirectoryPath = Path.DirectorySeparatorChar.ToString();
 
         public FileSystemRepository(FileRepository fileRepository, DirectoryRepository directoryRepository)
         {
@@ -37,10 +38,10 @@ namespace CassandraFS
             var parentDirPath = Path.GetDirectoryName(path);
             if (parentDirPath == null || rootDirPaths.Contains(parentDirPath) || rootDirPaths.Contains(path))
             {
-                parentDirPath = Path.DirectorySeparatorChar.ToString();
+                parentDirPath = rootDirectoryPath;
             }
 
-            return parentDirPath;
+            return parentDirPath + Path.DirectorySeparatorChar;
         }
 
         public static string GetFileName(string path)
@@ -107,9 +108,7 @@ namespace CassandraFS
                            GetTree(fromDirectory, out var directoriesToRename, out var filesToRename);
                            foreach (var file in filesToRename)
                            {
-                               var filePath = file.Path == Path.DirectorySeparatorChar.ToString()
-                                                  ? file.Path + file.Name
-                                                  : file.Path + Path.DirectorySeparatorChar + file.Name;
+                               var filePath = file.Path + file.Name;
                                fileRepository.DeleteFile(filePath);
                                file.ModifiedTimestamp = DateTimeOffset.Now;
                                file.Path = file.Path.Replace(from, to);
@@ -117,9 +116,7 @@ namespace CassandraFS
                            }
                            foreach (var directory in directoriesToRename)
                            {
-                               var directoryPath = directory.Path == Path.DirectorySeparatorChar.ToString()
-                                                       ? directory.Path + directory.Name
-                                                       : directory.Path + Path.DirectorySeparatorChar + directory.Name;
+                               var directoryPath = directory.Path + directory.Name;
                                directoryRepository.DeleteDirectory(directoryPath);
                                directory.ModifiedTimestamp = DateTimeOffset.Now;
                                directory.Path = directory.Path.Replace(from, to);
@@ -439,10 +436,7 @@ namespace CassandraFS
             while (directoriesToVisit.Count != 0)
             {
                 var currentDirectory = directoriesToVisit.Dequeue();
-                var currentDirectoryPath =
-                    currentDirectory.Path == Path.DirectorySeparatorChar.ToString()
-                        ? Path.DirectorySeparatorChar + currentDirectory.Name
-                        : currentDirectory.Path + Path.DirectorySeparatorChar + currentDirectory.Name;
+                var currentDirectoryPath = currentDirectory.Path + currentDirectory.Name;
                 var childDirectories = directoryRepository.GetChildDirectories(currentDirectoryPath);
                 foreach (var directory in childDirectories)
                 {
