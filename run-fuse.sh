@@ -11,7 +11,7 @@ run_fuse() {
 run_tests() {
   while true;
   do
-	dotnet test CassandraFS/CassandraFS.sln
+	dotnet test CassandraFS/FileSystemTests/FileSystemTests.csproj
 	sleep 2
   done
 }
