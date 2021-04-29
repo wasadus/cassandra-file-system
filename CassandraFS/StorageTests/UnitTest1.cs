@@ -39,7 +39,7 @@ namespace StorageTests
 {
   ""CassandraEndPoints"": [
     {
-      ""Host"": ""cassandra""
+      ""Host"": ""localhost""
     }
   ],
   ""MessageSpaceName"": ""FTPMessageSpace"",
