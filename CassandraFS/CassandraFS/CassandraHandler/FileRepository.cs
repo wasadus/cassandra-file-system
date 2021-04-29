@@ -63,11 +63,16 @@ namespace CassandraFS.CassandraHandler
                        .FirstOrDefault(f => f.Path.Equals(parentDirPath) && f.Name.Equals(fileName))
                        .Execute();
             var fileModel = GetFileModel(file);
-            if (file.ContentGuid.HasValue)
+            if (file?.ContentGuid != null)
             {
                 fileModel.Data = blobStorage.TryRead(file.ContentGuid.Value.ToString());
             }
             return fileModel;
+        }
+
+        public IEnumerable<FileModel> GetTree(string rootPath)
+        {
+            return filesTableEvent.Where(file => file.Path.StartsWith(rootPath)).Select(file => GetFileModel(file)).Execute();
         }
 
         public void DeleteFile(string path)
@@ -115,27 +120,22 @@ namespace CassandraFS.CassandraHandler
             st_uid = (uint)file.UID,
         };
 
-        private FileModel GetFileModel(CQLFile file)
-        {
-            if (file == null)
-            {
-                return null;
-            }
-
-            return new FileModel
-            {
-                Path = file.Path,
-                Name = file.Name,
-                Data = file.Data,
-                ModifiedTimestamp = file.ModifiedTimestamp,
-                ExtendedAttributes =
-                        FileExtendedAttributesHandler.DeserializeExtendedAttributes(file.ExtendedAttributes),
-                FilePermissions = (FilePermissions)file.FilePermissions,
-                GID = (uint)file.GID,
-                UID = (uint)file.UID,
-                ContentGUID = file.ContentGuid
-            };
-        }
+        private FileModel GetFileModel(CQLFile file) =>
+            file == null
+                ? null
+                : new FileModel
+                    {
+                        Path = file.Path,
+                        Name = file.Name,
+                        Data = file.Data,
+                        ModifiedTimestamp = file.ModifiedTimestamp,
+                        ExtendedAttributes =
+                            FileExtendedAttributesHandler.DeserializeExtendedAttributes(file.ExtendedAttributes),
+                        FilePermissions = (FilePermissions)file.FilePermissions,
+                        GID = (uint)file.GID,
+                        UID = (uint)file.UID,
+                        ContentGUID = file.ContentGuid
+                    };
 
         private CQLFile GetCQLFile(FileModel file)
         {
