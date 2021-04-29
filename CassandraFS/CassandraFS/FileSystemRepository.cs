@@ -13,9 +13,10 @@ namespace CassandraFS
 {
     public class FileSystemRepository
     {
-        private static readonly HashSet<string> rootDirPaths = new HashSet<string> {"", "."};
+        private static readonly HashSet<string> rootDirPaths = new HashSet<string> {"", ".", Path.DirectorySeparatorChar.ToString()};
         private readonly FileRepository fileRepository;
         private readonly DirectoryRepository directoryRepository;
+        private static readonly string rootDirectoryPath = Path.DirectorySeparatorChar.ToString();
 
         public FileSystemRepository(FileRepository fileRepository, DirectoryRepository directoryRepository)
         {
@@ -37,10 +38,10 @@ namespace CassandraFS
             var parentDirPath = Path.GetDirectoryName(path);
             if (parentDirPath == null || rootDirPaths.Contains(parentDirPath) || rootDirPaths.Contains(path))
             {
-                parentDirPath = Path.DirectorySeparatorChar.ToString();
+                return rootDirectoryPath;
             }
 
-            return parentDirPath;
+            return parentDirPath + Path.DirectorySeparatorChar;
         }
 
         public static string GetFileName(string path)
@@ -99,21 +100,27 @@ namespace CassandraFS
                    .Then(fromDirectory =>
                        {
                            directoryRepository.DeleteDirectory(from);
-                           fromDirectory.Path = GetParentDirectory(to);
                            fromDirectory.Name = GetFileName(to);
+                           fromDirectory.Path = GetParentDirectory(to);
+                           fromDirectory.ModifiedTimestamp = DateTimeOffset.Now;
                            directoryRepository.WriteDirectory(fromDirectory);
-                           foreach (var directory in directoryRepository.GetTree(from))
+
+                           GetTree(fromDirectory, out var directoriesToRename, out var filesToRename);
+                           foreach (var file in filesToRename)
                            {
-                               //TODO Check pathtofile = path + name
-                               directoryRepository.DeleteDirectory(directory.Path + directory.Name);
-                               directory.Path = directory.Path.Replace(from, to);
-                               directoryRepository.WriteDirectory(directory);
-                           }
-                           foreach (var file in fileRepository.GetTree(from))
-                           {
-                               fileRepository.DeleteFile(file.Path + file.Name);
+                               var filePath = file.Path + file.Name;
+                               fileRepository.DeleteFile(filePath);
+                               file.ModifiedTimestamp = DateTimeOffset.Now;
                                file.Path = file.Path.Replace(from, to);
                                fileRepository.WriteFile(file);
+                           }
+                           foreach (var directory in directoriesToRename)
+                           {
+                               var directoryPath = directory.Path + directory.Name;
+                               directoryRepository.DeleteDirectory(directoryPath);
+                               directory.ModifiedTimestamp = DateTimeOffset.Now;
+                               directory.Path = directory.Path.Replace(from, to);
+                               directoryRepository.WriteDirectory(directory);
                            }
                            return Result.Ok();
                        });
@@ -418,6 +425,27 @@ namespace CassandraFS
             return directoryRepository.IsDirectoryExists(directory)
                        ? Result.Ok()
                        : Result.Fail(fileRepository.IsFileExists(directory) ? FileSystemError.NotDirectory : FileSystemError.NoEntry);
+        }
+
+        private void GetTree(DirectoryModel rootDirectory, out List<DirectoryModel> directories, out List<FileModel> files)
+        {
+            var directoriesToVisit = new Queue<DirectoryModel>();
+            directoriesToVisit.Enqueue(rootDirectory);
+            directories = new List<DirectoryModel>();
+            files = new List<FileModel>();
+            while (directoriesToVisit.Count != 0)
+            {
+                var currentDirectory = directoriesToVisit.Dequeue();
+                var currentDirectoryPath = currentDirectory.Path + currentDirectory.Name;
+                var childDirectories = directoryRepository.GetChildDirectories(currentDirectoryPath);
+                foreach (var directory in childDirectories)
+                {
+                    directoriesToVisit.Enqueue(directory);
+                    directories.Add(directory);
+                }
+                var childFiles = fileRepository.GetChildFiles(currentDirectoryPath);
+                files.AddRange(childFiles);
+            }
         }
     }
 }

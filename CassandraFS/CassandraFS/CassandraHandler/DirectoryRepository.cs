@@ -9,7 +9,9 @@ using Cassandra;
 
 using Mono.Fuse.NETStandard;
 using Mono.Unix.Native;
+
 using System;
+
 using CassandraFS.Models;
 
 namespace CassandraFS.CassandraHandler
@@ -28,9 +30,9 @@ namespace CassandraFS.CassandraHandler
 
         public IEnumerable<DirectoryEntry> ReadDirectoryContent(string path) =>
             directoriesTableEvent
-                .Where(entry => entry.Path.Equals(path))
+                .Where(entry => entry.Path == path)
                 .Execute()
-                .Select(dir => new DirectoryEntry(dir.Name) { Stat = GetDirectoryModel(dir).GetStat() });
+                .Select(dir => new DirectoryEntry(dir.Name) {Stat = GetDirectoryModel(dir).GetStat()});
 
         public bool IsDirectoriesExists(string directoryPath) =>
             directoriesTableEvent
@@ -39,11 +41,11 @@ namespace CassandraFS.CassandraHandler
                 .Any();
 
         public void WriteDirectory(DirectoryModel directory)
-           => directoriesTableEvent.Insert(GetCQLDirectory(directory)).SetTimestamp(timestampProvider.UpdateTimestamp()).Execute();
+            => directoriesTableEvent.Insert(GetCQLDirectory(directory)).SetTimestamp(timestampProvider.UpdateTimestamp()).Execute();
 
         public DirectoryModel ReadDirectory(string path)
         {
-            if (path.Equals("/") || path.Equals("."))
+            if (path == "/" || path == "." || path == Path.DirectorySeparatorChar.ToString())
             {
                 return root;
             }
@@ -51,22 +53,18 @@ namespace CassandraFS.CassandraHandler
             var parentDirPath = FileSystemRepository.GetParentDirectory(path);
             var dirName = Path.GetFileName(path);
             var dir = directoriesTableEvent
-                      .FirstOrDefault(d => d.Path.Equals(parentDirPath) && d.Name.Equals(dirName))
+                      .FirstOrDefault(d => d.Path == parentDirPath && d.Name == dirName)
                       .Execute();
-            
+
             return GetDirectoryModel(dir);
         }
 
-        public IEnumerable<DirectoryModel> GetTree(string rootPath)
+        public IEnumerable<DirectoryModel> GetChildDirectories(string rootPath)
         {
-            return rootPath.Equals("/")
-                       ? directoriesTableEvent
-                         .Select(x => GetDirectoryModel(x))
-                         .Execute()
-                       : directoriesTableEvent
-                         .Where(directory => directory.Path.StartsWith(rootPath))
-                         .Select(directory => GetDirectoryModel(directory))
-                         .Execute();
+            return directoriesTableEvent
+                   .Where(directory => directory.Path == rootPath)
+                   .Select(x => GetDirectoryModel(x))
+                   .Execute();
         }
 
         public void DeleteDirectory(string path)
@@ -74,7 +72,7 @@ namespace CassandraFS.CassandraHandler
             var dirName = FileSystemRepository.GetFileName(path);
             var parentDirPath = FileSystemRepository.GetParentDirectory(path);
             directoriesTableEvent
-                .Where(d => d.Path.Equals(parentDirPath) && d.Name.Equals(dirName))
+                .Where(d => d.Path == parentDirPath && d.Name == dirName)
                 .Delete()
                 .SetTimestamp(timestampProvider.UpdateTimestamp())
                 .Execute();
@@ -82,7 +80,7 @@ namespace CassandraFS.CassandraHandler
 
         public bool IsDirectoryExists(string path)
         {
-            if (path.Equals("/") || path.Equals("."))
+            if (path == "/" || path == "." || path == Path.DirectorySeparatorChar.ToString())
             {
                 return true;
             }
@@ -90,7 +88,7 @@ namespace CassandraFS.CassandraHandler
             var parentDirPath = FileSystemRepository.GetParentDirectory(path);
             var dirName = FileSystemRepository.GetFileName(path);
             var dir = directoriesTableEvent
-                      .Where(d => d.Path.Equals(parentDirPath) && d.Name.Equals(dirName))
+                      .Where(d => d.Path == parentDirPath && d.Name == dirName)
                       .Execute();
             var result = dir.Any();
             return result;
@@ -100,23 +98,23 @@ namespace CassandraFS.CassandraHandler
             directory == null
                 ? null
                 : new DirectoryModel
-                {
-                    Path = directory.Path,
-                    Name = directory.Name,
-                    FilePermissions = (FilePermissions)directory.FilePermissions,
-                    GID = (uint)directory.GID,
-                    UID = (uint)directory.UID,
-                    ModifiedTimestamp = directory.ModifiedTimestamp
-                };
+                    {
+                        Path = directory.Path,
+                        Name = directory.Name,
+                        FilePermissions = (FilePermissions)directory.FilePermissions,
+                        GID = (uint)directory.GID,
+                        UID = (uint)directory.UID,
+                        ModifiedTimestamp = directory.ModifiedTimestamp
+                    };
 
         private CQLDirectory GetCQLDirectory(DirectoryModel directory) => new CQLDirectory
-        {
-            Path = directory.Path,
-            Name = directory.Name,
-            FilePermissions = (int)directory.FilePermissions,
-            GID = directory.GID,
-            UID = directory.UID,
-            ModifiedTimestamp = directory.ModifiedTimestamp
-        };
+            {
+                Path = directory.Path,
+                Name = directory.Name,
+                FilePermissions = (int)directory.FilePermissions,
+                GID = directory.GID,
+                UID = directory.UID,
+                ModifiedTimestamp = directory.ModifiedTimestamp
+            };
     }
 }

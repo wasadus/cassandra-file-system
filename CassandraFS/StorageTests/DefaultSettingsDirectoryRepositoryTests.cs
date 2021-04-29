@@ -59,13 +59,13 @@ namespace StorageTests
         {
             var root = GetTestDirectoryModel(Path.DirectorySeparatorChar.ToString());
             var child1 = GetTestDirectoryModel(root.Path + root.Name);
-            var child2 = GetTestDirectoryModel(child1.Path + Path.DirectorySeparatorChar + child1.Name);
+            var child2 = GetTestDirectoryModel(child1.Path + child1.Name);
             directoryRepository.WriteDirectory(root);
             directoryRepository.WriteDirectory(child1);
             directoryRepository.WriteDirectory(child2);
             var actualRoot = directoryRepository.ReadDirectory(root.Path + root.Name);
-            var actualChild1 = directoryRepository.ReadDirectory(child1.Path + Path.DirectorySeparatorChar + child1.Name);
-            var actualChild2 = directoryRepository.ReadDirectory(child2.Path + Path.DirectorySeparatorChar + child2.Name);
+            var actualChild1 = directoryRepository.ReadDirectory(child1.Path + child1.Name);
+            var actualChild2 = directoryRepository.ReadDirectory(child2.Path + child2.Name);
             CompareDirectoryModel(root, actualRoot);
             CompareDirectoryModel(child1, actualChild1);
             CompareDirectoryModel(child2, actualChild2);
@@ -96,8 +96,8 @@ namespace StorageTests
             var directory = GetTestDirectoryModel(Path.DirectorySeparatorChar.ToString());
             directoryRepository.WriteDirectory(directory);
             directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().Be(true);
-            directoryRepository.DeleteDirectory(directory.);
-            directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().Be(true)
+            directoryRepository.DeleteDirectory(directory.Path + directory.Name);
+            directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().Be(false);
         }
 
         [Test]
@@ -107,6 +107,7 @@ namespace StorageTests
 
         private DirectoryModel GetTestDirectoryModel(string path, FilePermissions permissions = FilePermissions.S_IFDIR, uint gid = 0, uint uid = 0)
         {
+            path = path == Path.DirectorySeparatorChar.ToString() ? path : path + Path.DirectorySeparatorChar;
             return new DirectoryModel()
                 {
                     Name = Guid.NewGuid().ToString(),

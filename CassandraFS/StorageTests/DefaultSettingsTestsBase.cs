@@ -27,11 +27,6 @@ namespace StorageTests
         public Container container;
 
         public DirectoryRepository directoryRepository;
-        public string defaultDirPath = Path.DirectorySeparatorChar.ToString();
-        public string defaultDirName = "testdir";
-        public FilePermissions defaultDirPermissions = FilePermissions.S_IFDIR;
-        public uint defaultDirUID = 0;
-        public uint defaultDirGID = 0;
 
         public FileRepository fileRepository;
         public byte[] defaultFileData = Encoding.UTF8.GetBytes("SomeData");
@@ -70,54 +65,6 @@ namespace StorageTests
             container.Configurator.ForAbstraction<Config>().UseInstances(config);
             CassandraConfigurator.ConfigureCassandra(container, logger);
             directoryRepository = container.Get<DirectoryRepository>();
-        }
-
-        [SetUp]
-        public void Setup()
-        {
-            var session = container.Get<ISession>();
-            var config = container.Get<Config>();
-            session.Execute($"DROP TABLE IF EXISTS \"{config.MessageSpaceName}\".\"Directories\";");
-            session.Execute($"DROP TABLE IF EXISTS \"{config.MessageSpaceName}\".\"FilesContent\";");
-            session.Execute($"DROP TABLE IF EXISTS \"{config.MessageSpaceName}\".\"FilesContentMeta\";");
-            session.Execute($"DROP TABLE IF EXISTS \"{config.MessageSpaceName}\".\"Files\";");
-            session.Execute(
-                $"CREATE TABLE IF NOT EXISTS \"{config.MessageSpaceName}\".\"Directories\" (" +
-                "\"path\" text, " +
-                "\"name\" text, " +
-                "\"permissions\" int, " +
-                "\"gid\" bigint, " +
-                "\"uid\" bigint, " +
-                "\"modified\" timestamp, " +
-                "PRIMARY KEY((path), name));"
-            );
-            session.Execute(
-                $"CREATE TABLE IF NOT EXISTS \"{config.MessageSpaceName}\".\"Files\" (" +
-                "\"path\" text, " +
-                "\"name\" text, " +
-                "\"modified\" timestamp, " +
-                "\"extended_attributes\" blob, " +
-                "\"data\" blob, " +
-                "\"content_guid\" uuid, " +
-                "\"permissions\" int, " +
-                "\"gid\" bigint, " +
-                "\"uid\" bigint, " +
-                "PRIMARY KEY((path), name));"
-            );
-            session.Execute(
-                $"CREATE TABLE IF NOT EXISTS \"{config.MessageSpaceName}\".\"FilesContent\" (" +
-                "\"blob_version\" uuid, " +
-                "\"chunk_id\" smallint, " +
-                "\"chunk_bytes\" blob, " +
-                "PRIMARY KEY(blob_version));"
-            );
-            session.Execute(
-                $"CREATE TABLE IF NOT EXISTS \"{config.MessageSpaceName}\".\"FilesContentMeta\" (" +
-                "\"blob_id\" text, " +
-                "\"blob_version\" uuid, " +
-                "\"chunks_count\" smallint, " +
-                "PRIMARY KEY(blob_id));"
-            );
         }
     }
 }
