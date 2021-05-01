@@ -1,17 +1,13 @@
 ﻿using System.Collections.Generic;
-using System.IO;
-using System.Text;
 
 using Cassandra;
+using Cassandra.Data.Linq;
 
 using CassandraFS;
 using CassandraFS.CassandraHandler;
-using CassandraFS.Models;
 
 using GroboContainer.Core;
 using GroboContainer.Impl;
-
-using Mono.Unix.Native;
 
 using NUnit.Framework;
 
@@ -27,19 +23,9 @@ namespace StorageTests
         public Container container;
 
         public DirectoryRepository directoryRepository;
-
         public FileRepository fileRepository;
-        public byte[] defaultFileData = Encoding.UTF8.GetBytes("SomeData");
-        public string defaultFileName = "test.file";
-        public string defaultFilePath = Path.DirectorySeparatorChar.ToString();
-        public FilePermissions defaultFilePermissions = FilePermissions.S_IFREG;
-        public uint defaultFileUID = 0;
-        public uint defaultFileGID = 0;
-
-        public ExtendedAttributes defaultFileAttributes = new ExtendedAttributes
-            {
-                Attributes = new Dictionary<string, byte[]> {{"attr", Encoding.UTF8.GetBytes("value")}}
-            };
+        public Table<CQLDirectory> directoriesTableEvent;
+        public Table<CQLFile> filesTableEvent;
 
         [OneTimeSetUp]
         public void OneTimeSetup()
@@ -65,6 +51,10 @@ namespace StorageTests
             container.Configurator.ForAbstraction<Config>().UseInstances(config);
             CassandraConfigurator.ConfigureCassandra(container, logger);
             directoryRepository = container.Get<DirectoryRepository>();
+            fileRepository = container.Get<FileRepository>();
+            var session = container.Get<ISession>();
+            directoriesTableEvent = new Table<CQLDirectory>(session);
+            filesTableEvent = new Table<CQLFile>(session);
         }
     }
 }
