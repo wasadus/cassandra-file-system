@@ -26,6 +26,7 @@ namespace StorageTests
         public FileRepository fileRepository;
         public Table<CQLDirectory> directoriesTableEvent;
         public Table<CQLFile> filesTableEvent;
+        public int dataBufferSize;
 
         [OneTimeSetUp]
         public void OneTimeSetup()
@@ -55,6 +56,7 @@ namespace StorageTests
             var session = container.Get<ISession>();
             directoriesTableEvent = new Table<CQLDirectory>(session);
             filesTableEvent = new Table<CQLFile>(session);
+            dataBufferSize = config.DefaultDataBufferSize!.Value;
         }
     }
 }
