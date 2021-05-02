@@ -1,11 +1,6 @@
 ﻿using System;
 using System.IO;
 
-using Cassandra.Data.Linq;
-
-using CassandraFS.CassandraHandler;
-using CassandraFS.Models;
-
 using FluentAssertions;
 
 using Mono.Unix.Native;
@@ -134,78 +129,6 @@ namespace StorageTests
             Assert.DoesNotThrow(() => directoryRepository.DeleteDirectory(path + name));
             directoryRepository.IsDirectoryExists(path + name).Should().Be(false);
             ReadCQLDirectory(path, name).Should().BeNull();
-        }
-
-        public static DirectoryModel GetTestDirectoryModel(string path, FilePermissions permissions = FilePermissions.S_IFDIR, uint gid = 0, uint uid = 0)
-        {
-            path = path == Path.DirectorySeparatorChar.ToString() ? path : path + Path.DirectorySeparatorChar;
-            return new DirectoryModel()
-                {
-                    Name = Guid.NewGuid().ToString(),
-                    Path = path,
-                    FilePermissions = FilePermissions.S_IFDIR | permissions,
-                    GID = gid,
-                    UID = uid,
-                    ModifiedTimestamp = DateTimeOffset.Now
-                };
-        }
-
-        private void CompareDirectoryModel(DirectoryModel expected, DirectoryModel actual)
-        {
-            if (expected == null && actual == null)
-            {
-                return;
-            }
-            expected.Should().NotBeNull();
-            actual.Should().NotBeNull();
-            actual.Name.Should().Be(expected.Name);
-            actual.Path.Should().Be(expected.Path);
-            actual.GID.Should().Be(expected.GID);
-            actual.UID.Should().Be(expected.UID);
-            actual.ModifiedTimestamp.Should().BeCloseTo(expected.ModifiedTimestamp);
-            actual.FilePermissions.Should().HaveFlag(expected.FilePermissions);
-        }
-
-        private void CompareDirectoryStat(Stat expected, Stat actual)
-        {
-            actual.st_mtim.tv_sec.Should().BeCloseTo(expected.st_mtim.tv_sec, 1000);
-            actual.st_mtim.tv_nsec.Should().BeCloseTo(expected.st_mtim.tv_nsec, 1000000);
-            actual.st_mode.Should().HaveFlag(expected.st_mode);
-            actual.st_nlink.Should().BeGreaterOrEqualTo(expected.st_nlink);
-            actual.st_size.Should().BeGreaterOrEqualTo(expected.st_size);
-            actual.st_gid.Should().Be(expected.st_gid);
-            actual.st_uid.Should().Be(expected.st_uid);
-        }
-
-        private void CompareCQLDirectory(CQLDirectory expected, CQLDirectory actual)
-        {
-            if (expected == null && actual == null)
-            {
-                return;
-            }
-            expected.Should().NotBeNull();
-            actual.Should().NotBeNull();
-            actual.Name.Should().Be(expected.Name);
-            actual.Path.Should().Be(expected.Path);
-            actual.GID.Should().Be(expected.GID);
-            actual.UID.Should().Be(expected.UID);
-            actual.ModifiedTimestamp.Should().BeCloseTo(expected.ModifiedTimestamp);
-            actual.FilePermissions.Should().BeGreaterOrEqualTo(expected.FilePermissions);
-        }
-
-        private CQLDirectory GetCQLDirectoryFromDirectoryModel(DirectoryModel directory) => new CQLDirectory
-            {
-                Path = directory.Path,
-                Name = directory.Name,
-                FilePermissions = (int)directory.FilePermissions,
-                GID = directory.GID,
-                UID = directory.UID,
-                ModifiedTimestamp = directory.ModifiedTimestamp
-            };
-
-        private CQLDirectory ReadCQLDirectory(string path, string name)
-        {
-            return directoriesTableEvent.FirstOrDefault(x => x.Path == path && x.Name == name).Execute();
         }
     }
 }

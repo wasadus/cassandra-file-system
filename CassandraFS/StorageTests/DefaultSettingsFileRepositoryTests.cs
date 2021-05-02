@@ -3,10 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-using Cassandra.Data.Linq;
-
-using CassandraFS;
-using CassandraFS.CassandraHandler;
 using CassandraFS.Models;
 
 using FluentAssertions;
@@ -104,7 +100,7 @@ namespace StorageTests
         [Test]
         public void TestCreateManyFilesInOneDirectory()
         {
-            var root = DefaultSettingsDirectoryRepositoryTests.GetTestDirectoryModel(Path.DirectorySeparatorChar.ToString());
+            var root = GetTestDirectoryModel(Path.DirectorySeparatorChar.ToString());
             directoryRepository.WriteDirectory(root);
             var rootPath = root.Path + root.Name;
             for (var i = 0; i < 50; i++)
@@ -156,89 +152,5 @@ namespace StorageTests
             fileRepository.IsFileExists(file.Path + file.Name).Should().Be(false);
             ReadCQLFile(file.Path, file.Name).Should().BeNull();
         }
-
-        private FileModel GetTestFileModel(string path, FilePermissions permissions = FilePermissions.S_IFDIR, uint gid = 0, uint uid = 0)
-        {
-            path = path == Path.DirectorySeparatorChar.ToString() ? path : path + Path.DirectorySeparatorChar;
-            return new FileModel()
-                {
-                    Name = Guid.NewGuid().ToString(),
-                    Path = path,
-                    FilePermissions = FilePermissions.S_IFREG | permissions,
-                    GID = gid,
-                    UID = uid,
-                    ModifiedTimestamp = DateTimeOffset.Now,
-                    Data = Encoding.UTF8.GetBytes(Guid.NewGuid().ToString()),
-                    ExtendedAttributes = new ExtendedAttributes
-                        {
-                            Attributes = new Dictionary<string, byte[]> {{Guid.NewGuid().ToString(), Encoding.UTF8.GetBytes(Guid.NewGuid().ToString())}}
-                        }
-                };
-        }
-
-        private void CompareFileModel(FileModel expected, FileModel actual)
-        {
-            if (expected == null && actual == null)
-            {
-                return;
-            }
-            expected.Should().NotBeNull();
-            actual.Should().NotBeNull();
-            actual.Name.Should().Be(expected.Name);
-            actual.Path.Should().Be(expected.Path);
-            actual.GID.Should().Be(expected.GID);
-            actual.UID.Should().Be(expected.UID);
-            actual.ModifiedTimestamp.Should().BeCloseTo(expected.ModifiedTimestamp);
-            actual.FilePermissions.Should().HaveFlag(expected.FilePermissions);
-            actual.Data.Should().BeEquivalentTo(expected.Data);
-            actual.ExtendedAttributes.Attributes.Keys.Should().BeEquivalentTo(expected.ExtendedAttributes.Attributes.Keys);
-            actual.ExtendedAttributes.Attributes.Values.Should().BeEquivalentTo(expected.ExtendedAttributes.Attributes.Values);
-        }
-
-        private void CompareFileStat(Stat expected, Stat actual)
-        {
-            actual.st_mtim.tv_sec.Should().BeCloseTo(expected.st_mtim.tv_sec, 1000);
-            actual.st_mtim.tv_nsec.Should().BeCloseTo(expected.st_mtim.tv_nsec, 1000000);
-            actual.st_mode.Should().HaveFlag(expected.st_mode);
-            actual.st_nlink.Should().BeGreaterOrEqualTo(expected.st_nlink);
-            actual.st_size.Should().BeGreaterOrEqualTo(expected.st_size);
-            actual.st_gid.Should().Be(expected.st_gid);
-            actual.st_uid.Should().Be(expected.st_uid);
-            actual.st_size.Should().BeGreaterOrEqualTo(expected.st_size);
-            actual.st_blocks.Should().BeGreaterOrEqualTo(expected.st_blocks);
-        }
-
-        private void CompareCQLFile(CQLFile expected, CQLFile actual)
-        {
-            if (expected == null && actual == null)
-            {
-                return;
-            }
-            expected.Should().NotBeNull();
-            actual.Should().NotBeNull();
-            actual.Name.Should().Be(expected.Name);
-            actual.Path.Should().Be(expected.Path);
-            actual.GID.Should().Be(expected.GID);
-            actual.UID.Should().Be(expected.UID);
-            actual.ModifiedTimestamp.Should().BeCloseTo(expected.ModifiedTimestamp);
-            actual.FilePermissions.Should().BeGreaterOrEqualTo(expected.FilePermissions);
-            actual.Data.Should().BeEquivalentTo(expected.Data);
-            actual.ExtendedAttributes.Should().BeEquivalentTo(expected.ExtendedAttributes);
-        }
-
-        private CQLFile GetCQLFileFromFileModel(FileModel file) => new CQLFile
-            {
-                Path = file.Path,
-                Name = file.Name,
-                ExtendedAttributes = FileExtendedAttributesHandler.SerializeExtendedAttributes(file.ExtendedAttributes),
-                ModifiedTimestamp = file.ModifiedTimestamp,
-                FilePermissions = (int)file.FilePermissions,
-                GID = file.GID,
-                UID = file.UID,
-                Data = file.Data
-            };
-
-        private CQLFile ReadCQLFile(string path, string name)
-            => filesTableEvent.FirstOrDefault(x => x.Path == path && x.Name == name).Execute();
     }
 }
