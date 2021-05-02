@@ -3,7 +3,6 @@ using System.IO;
 
 using Cassandra.Data.Linq;
 
-using CassandraFS;
 using CassandraFS.CassandraHandler;
 using CassandraFS.Models;
 
@@ -33,16 +32,16 @@ namespace StorageTests
         public void TestReplaceDirectory()
         {
             var directory = GetTestDirectoryModel(Path.DirectorySeparatorChar.ToString());
-            var cqlDirectory = GetCQLDirectoryFromDirectoryModel(directory);
             directoryRepository.WriteDirectory(directory);
             directory.FilePermissions = FilePermissions.S_IFDIR | FilePermissions.ACCESSPERMS;
             directory.GID = 1;
-            directory.UID = 1;
+            directory.UID = 2;
             directoryRepository.WriteDirectory(directory);
             var actualDirectory = directoryRepository.ReadDirectory(directory.Path + directory.Name);
             var actualCQLDirectory = ReadCQLDirectory(directory.Path, directory.Name);
+            var cqlDirectory = GetCQLDirectoryFromDirectoryModel(directory);
             CompareDirectoryModel(directory, actualDirectory);
-            CompareCQLDirectory(cqlDirectory, cqlDirectory);
+            CompareCQLDirectory(cqlDirectory, actualCQLDirectory);
         }
 
         [Test]
@@ -132,12 +131,12 @@ namespace StorageTests
             var name = Guid.NewGuid().ToString();
             directoryRepository.IsDirectoryExists(path + name).Should().Be(false);
             ReadCQLDirectory(path, name).Should().BeNull();
-            Assert.DoesNotThrow(() => directoryRepository.DeleteDirectory(path));
+            Assert.DoesNotThrow(() => directoryRepository.DeleteDirectory(path + name));
             directoryRepository.IsDirectoryExists(path + name).Should().Be(false);
             ReadCQLDirectory(path, name).Should().BeNull();
         }
 
-        private DirectoryModel GetTestDirectoryModel(string path, FilePermissions permissions = FilePermissions.S_IFDIR, uint gid = 0, uint uid = 0)
+        public static DirectoryModel GetTestDirectoryModel(string path, FilePermissions permissions = FilePermissions.S_IFDIR, uint gid = 0, uint uid = 0)
         {
             path = path == Path.DirectorySeparatorChar.ToString() ? path : path + Path.DirectorySeparatorChar;
             return new DirectoryModel()

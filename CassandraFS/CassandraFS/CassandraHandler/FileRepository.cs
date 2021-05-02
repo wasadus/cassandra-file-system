@@ -80,7 +80,7 @@ namespace CassandraFS.CassandraHandler
                        .FirstOrDefault(d => d.Path == parentDirPath && d.Name == fileName)
                        .Execute();
             var timestamp = timestampProvider.UpdateTimestamp();
-            if (file.ContentGuid.HasValue)
+            if (file?.ContentGuid != null)
             {
                 blobStorage.TryDelete(file.ContentGuid.ToString(), timestamp);
             }
