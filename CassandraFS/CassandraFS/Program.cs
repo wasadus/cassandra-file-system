@@ -29,7 +29,7 @@ namespace CassandraFS
             {
                 config.DefaultTTL = new TimeSpan(14, 0, 0, 0).Seconds;
             }
-            config.DefaultDataBufferSize ??= 2048;
+            config.DefaultDataBufferSize ??= 4194304;
             container.Configurator.ForAbstraction<Config>().UseInstances(config);
 
             CassandraConfigurator.ConfigureCassandra(container, logger);

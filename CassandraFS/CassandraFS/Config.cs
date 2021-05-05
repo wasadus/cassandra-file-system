@@ -4,6 +4,7 @@ namespace CassandraFS
 {
     public class Config
     {
+        public string MountPointPath { get; set; }
         public List<NodeSettings> CassandraEndPoints { get; set; }
         public string MessageSpaceName { get; set; }
         public bool DropFilesTable { get; set; }

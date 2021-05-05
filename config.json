@@ -1,4 +1,5 @@
 {
+  "MountPointPath": "/home/cassandra-fs/", 
   "CassandraEndPoints": [
     {
       "Host": "cassandra"
