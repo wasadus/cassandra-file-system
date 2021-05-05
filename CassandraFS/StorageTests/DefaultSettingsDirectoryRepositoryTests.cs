@@ -43,10 +43,10 @@ namespace StorageTests
         public void TestReadNotExistingDirectory()
         {
             var directory = GetTestDirectoryModel(Path.DirectorySeparatorChar.ToString());
-            directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().Be(false);
+            directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().BeFalse();
             ReadCQLDirectory(directory.Path, directory.Name).Should().BeNull();
             directoryRepository.WriteDirectory(directory);
-            directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().Be(true);
+            directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().BeTrue();
             ReadCQLDirectory(directory.Path, directory.Name).Should().NotBeNull();
         }
 
@@ -112,10 +112,10 @@ namespace StorageTests
         {
             var directory = GetTestDirectoryModel(Path.DirectorySeparatorChar.ToString());
             directoryRepository.WriteDirectory(directory);
-            directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().Be(true);
+            directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().BeTrue();
             ReadCQLDirectory(directory.Path, directory.Name).Should().NotBeNull();
             directoryRepository.DeleteDirectory(directory.Path + directory.Name);
-            directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().Be(false);
+            directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().BeFalse();
             ReadCQLDirectory(directory.Path, directory.Name).Should().BeNull();
         }
 
@@ -124,10 +124,10 @@ namespace StorageTests
         {
             var path = Path.DirectorySeparatorChar.ToString();
             var name = Guid.NewGuid().ToString();
-            directoryRepository.IsDirectoryExists(path + name).Should().Be(false);
+            directoryRepository.IsDirectoryExists(path + name).Should().BeFalse();
             ReadCQLDirectory(path, name).Should().BeNull();
             Assert.DoesNotThrow(() => directoryRepository.DeleteDirectory(path + name));
-            directoryRepository.IsDirectoryExists(path + name).Should().Be(false);
+            directoryRepository.IsDirectoryExists(path + name).Should().BeFalse();
             ReadCQLDirectory(path, name).Should().BeNull();
         }
     }

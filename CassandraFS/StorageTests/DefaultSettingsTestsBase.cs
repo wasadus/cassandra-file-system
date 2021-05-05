@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 
 using Cassandra;
 using Cassandra.Data.Linq;
@@ -33,22 +32,23 @@ namespace StorageTests
         public Table<CQLDirectory> directoriesTableEvent;
         public Table<CQLFile> filesTableEvent;
 
-        public static Config config = new Config
-            {
-                CassandraEndPoints = new List<NodeSettings>
-                    {
-                        new NodeSettings {Host = "127.0.0.1"}
-                    },
-                MessageSpaceName = "FTPMessageSpace",
-                DropFilesTable = true,
-                DropDirectoriesTable = true,
-                DropFilesContentMetaTable = true,
-                DropFilesContentTable = true,
-                DefaultDataBufferSize = 2048,
-                DefaultTTL = 60,
-                ConnectionAttemptsCount = 5,
-                ReconnectTimeout = 5000
-            };
+        public virtual Config Config =>
+            new Config
+                {
+                    CassandraEndPoints = new List<NodeSettings>
+                        {
+                            new NodeSettings {Host = "127.0.0.1"}
+                        },
+                    MessageSpaceName = "FTPMessageSpace",
+                    DropFilesTable = true,
+                    DropDirectoriesTable = true,
+                    DropFilesContentMetaTable = true,
+                    DropFilesContentTable = true,
+                    DefaultDataBufferSize = 128,
+                    DefaultTTL = 60,
+                    ConnectionAttemptsCount = 5,
+                    ReconnectTimeout = 5000
+                };
 
         [OneTimeSetUp]
         public void OneTimeSetup()
@@ -58,7 +58,7 @@ namespace StorageTests
             var settings = new FileLogSettings();
             var logger = new CompositeLog(new ConsoleLog(), new FileLog(settings));
             container.Configurator.ForAbstraction<ILog>().UseInstances(logger);
-            container.Configurator.ForAbstraction<Config>().UseInstances(config);
+            container.Configurator.ForAbstraction<Config>().UseInstances(Config);
             CassandraConfigurator.ConfigureCassandra(container, logger);
             directoryRepository = container.Get<DirectoryRepository>();
             fileRepository = container.Get<FileRepository>();
@@ -165,10 +165,10 @@ namespace StorageTests
                     GID = gid,
                     UID = uid,
                     ModifiedTimestamp = DateTimeOffset.Now,
-                    Data = Encoding.UTF8.GetBytes(Guid.NewGuid().ToString()),
+                    Data = Guid.NewGuid().ToByteArray(),
                     ExtendedAttributes = new ExtendedAttributes
                         {
-                            Attributes = new Dictionary<string, byte[]> {{Guid.NewGuid().ToString(), Encoding.UTF8.GetBytes(Guid.NewGuid().ToString())}}
+                            Attributes = new Dictionary<string, byte[]> {{Guid.NewGuid().ToString(), Guid.NewGuid().ToByteArray()}}
                         }
                 };
         }
@@ -187,7 +187,15 @@ namespace StorageTests
             actual.UID.Should().Be(expected.UID);
             actual.ModifiedTimestamp.Should().BeCloseTo(expected.ModifiedTimestamp);
             actual.FilePermissions.Should().HaveFlag(expected.FilePermissions);
-            actual.Data.Should().BeEquivalentTo(expected.Data);
+            if (actual.Data != null && expected.Data != null)
+            {
+                actual.Data.Should().BeEquivalentTo(expected.Data);
+            }
+            else
+            {
+                actual.Data.Should().BeNull();
+                expected.Data.Should().BeNull();
+            }
             actual.ExtendedAttributes.Attributes.Keys.Should().BeEquivalentTo(expected.ExtendedAttributes.Attributes.Keys);
             actual.ExtendedAttributes.Attributes.Values.Should().BeEquivalentTo(expected.ExtendedAttributes.Attributes.Values);
         }
@@ -219,8 +227,26 @@ namespace StorageTests
             actual.UID.Should().Be(expected.UID);
             actual.ModifiedTimestamp.Should().BeCloseTo(expected.ModifiedTimestamp);
             actual.FilePermissions.Should().BeGreaterOrEqualTo(expected.FilePermissions);
-            actual.Data.Should().BeEquivalentTo(expected.Data);
+            if (actual.Data != null && expected.Data != null)
+            {
+                actual.Data.Should().BeEquivalentTo(expected.Data);
+            }
+            else
+            {
+                actual.Data.Should().BeNullOrEmpty();
+                expected.Data.Should().BeNullOrEmpty();
+            }
             actual.ExtendedAttributes.Should().BeEquivalentTo(expected.ExtendedAttributes);
+        }
+
+        public byte[] GetTestBigFileData()
+        {
+            var data = new List<byte>();
+            for (var i = 0; i < 64; i++)
+            {
+                data.AddRange(Guid.NewGuid().ToByteArray());
+            }
+            return data.ToArray();
         }
     }
 }

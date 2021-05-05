@@ -61,7 +61,7 @@ namespace StorageTests
                     Attributes = new Dictionary<string, byte[]>
                         {
                             {
-                                Guid.NewGuid().ToString(), Encoding.UTF8.GetBytes(Guid.NewGuid().ToString())
+                                Guid.NewGuid().ToString(), Guid.NewGuid().ToByteArray()
                             }
                         }
                 };
@@ -81,10 +81,10 @@ namespace StorageTests
         public void TestReadNotExistingFile()
         {
             var file = GetTestFileModel(Path.DirectorySeparatorChar.ToString());
-            fileRepository.IsFileExists(file.Path + file.Name).Should().Be(false);
+            fileRepository.IsFileExists(file.Path + file.Name).Should().BeFalse();
             ReadCQLFile(file.Path, file.Name).Should().BeNull();
             fileRepository.WriteFile(file);
-            fileRepository.IsFileExists(file.Path + file.Name).Should().Be(true);
+            fileRepository.IsFileExists(file.Path + file.Name).Should().BeTrue();
             ReadCQLFile(file.Path, file.Name).Should().NotBeNull();
         }
 
@@ -109,9 +109,9 @@ namespace StorageTests
                 var cqlFile = GetCQLFileFromFileModel(file);
                 fileRepository.WriteFile(file);
                 var actualFile = fileRepository.ReadFile(file.Path + Path.DirectorySeparatorChar + file.Name);
-                var actualCQLDirectory = ReadCQLFile(file.Path, file.Name);
+                var actualCQLFile = ReadCQLFile(file.Path, file.Name);
                 CompareFileModel(file, actualFile);
-                CompareCQLFile(cqlFile, actualCQLDirectory);
+                CompareCQLFile(cqlFile, actualCQLFile);
                 CompareFileStat(file.GetStat(), actualFile.GetStat());
             }
         }
@@ -121,10 +121,10 @@ namespace StorageTests
         {
             var file = GetTestFileModel(Path.DirectorySeparatorChar.ToString());
             fileRepository.WriteFile(file);
-            fileRepository.IsFileExists(file.Path + file.Name).Should().Be(true);
+            fileRepository.IsFileExists(file.Path + file.Name).Should().BeTrue();
             ReadCQLFile(file.Path, file.Name).Should().NotBeNull();
             fileRepository.DeleteFile(file.Path + file.Name);
-            fileRepository.IsFileExists(file.Path + file.Name).Should().Be(false);
+            fileRepository.IsFileExists(file.Path + file.Name).Should().BeFalse();
             ReadCQLFile(file.Path, file.Name).Should().BeNull();
         }
 
@@ -133,10 +133,10 @@ namespace StorageTests
         {
             var path = Path.DirectorySeparatorChar.ToString();
             var name = Guid.NewGuid().ToString();
-            fileRepository.IsFileExists(path + name).Should().Be(false);
+            fileRepository.IsFileExists(path + name).Should().BeFalse();
             ReadCQLFile(path, name).Should().BeNull();
             Assert.DoesNotThrow(() => fileRepository.DeleteFile(path + name));
-            fileRepository.IsFileExists(path + name).Should().Be(false);
+            fileRepository.IsFileExists(path + name).Should().BeFalse();
             ReadCQLFile(path, name).Should().BeNull();
         }
 
@@ -146,10 +146,10 @@ namespace StorageTests
             var file = GetTestFileModel(Path.DirectorySeparatorChar.ToString());
             file.Data = new byte[0];
             fileRepository.WriteFile(file);
-            fileRepository.IsFileExists(file.Path + file.Name).Should().Be(true);
+            fileRepository.IsFileExists(file.Path + file.Name).Should().BeTrue();
             ReadCQLFile(file.Path, file.Name).Should().NotBeNull();
             fileRepository.DeleteFile(file.Path + file.Name);
-            fileRepository.IsFileExists(file.Path + file.Name).Should().Be(false);
+            fileRepository.IsFileExists(file.Path + file.Name).Should().BeFalse();
             ReadCQLFile(file.Path, file.Name).Should().BeNull();
         }
     }
