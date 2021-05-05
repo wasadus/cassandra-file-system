@@ -25,8 +25,8 @@ namespace CassandraFS.CassandraHandler
         {
             this.timestampProvider = timestampProvider;
             filesTableEvent = new Table<CQLFile>(session);
-            blobStorage = new CqlLargeBlobStorage<CQLFileContentMeta, CQLFileContent>(session);
             dataBufferSize = config.DefaultDataBufferSize!.Value;
+            blobStorage = new CqlLargeBlobStorage<CQLFileContentMeta, CQLFileContent>(session, dataBufferSize);
             TTL = config.DefaultTTL!.Value;
         }
 
@@ -54,7 +54,7 @@ namespace CassandraFS.CassandraHandler
             {
                 RemoveFileContent(file.ContentGUID, timestamp);
             }
-            filesTableEvent.Insert(GetCQLFile(file)).SetTTL(TTL).SetTimestamp(timestamp).Execute();
+            filesTableEvent.Insert(cqlFile).SetTTL(TTL).SetTimestamp(timestamp).Execute();
         }
 
         public FileModel ReadFile(string path)
