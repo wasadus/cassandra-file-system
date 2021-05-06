@@ -16,16 +16,11 @@ namespace CassandraFS
         private readonly ILog logger;
         private readonly FileSystemRepository fileSystemRepository;
 
-        public CassandraFileSystem(string[] args, FileSystemRepository fileSystemRepository, ILog logger)
+        public CassandraFileSystem(string[] args, FileSystemRepository fileSystemRepository, ILog logger, Config config)
         {
             logger.Info("Parsing filesystem args...");
-            var unhandled = ParseFuseArguments(args);
-            if (unhandled.Length == 0)
-            {
-                throw new ArgumentException("Missing mountPoint");
-            }
-
-            MountPoint = unhandled[0];
+            ParseFuseArguments(args);
+            MountPoint = config.MountPointPath;
             logger.Info("Parsing filesystem args... complete");
             this.logger = logger;
             this.fileSystemRepository = fileSystemRepository;

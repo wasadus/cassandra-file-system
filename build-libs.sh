@@ -28,4 +28,9 @@ echo "configuration: $CONFIGURATION"
 
 echo "building fs..."
 build_fs
-echo "building ok"
+if [ $? -eq 0 ]
+then
+	echo "building fs ok"
+else
+	echo "building fs failed"
+fi

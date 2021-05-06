@@ -19,5 +19,5 @@ services:
           - "30000-30009:30000-30009"
         environment:
           FTP_LIST: "cassandra-fs:pass"
-          TESTING: 0
+          TESTING: 1
         restart: always

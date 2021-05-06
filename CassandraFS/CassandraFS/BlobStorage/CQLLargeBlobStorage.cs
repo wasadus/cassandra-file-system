@@ -14,10 +14,15 @@ namespace CassandraFS.BlobStorage
         where TBlobMeta : CQLLargeBlobMeta, new()
         where TBlobChunk : CQLFileContent, new()
     {
-        public CqlLargeBlobStorage(ISession session)
+        private readonly int chunkSize;
+        private readonly int maxBlobSize;
+
+        public CqlLargeBlobStorage(ISession session, int chunkSize)
         {
             blobMetaTable = new Table<TBlobMeta>(session);
             blobChunksTable = new Table<TBlobChunk>(session);
+            this.chunkSize = chunkSize;
+            maxBlobSize = 64 * chunkSize;
         }
 
         public bool Exists(string blobId) => TryReadBlobMeta(blobId) != null;
@@ -106,8 +111,6 @@ namespace CassandraFS.BlobStorage
             }
         }
 
-        private const int chunkSize = 4 * 1024 * 1024;
-        private const int maxBlobSize = 64 * chunkSize;
         private const int chunksReadingPageSize = 10;
         private readonly TimeSpan obsoleteBlobTtl = TimeSpan.FromMinutes(10);
         private readonly Table<TBlobMeta> blobMetaTable;

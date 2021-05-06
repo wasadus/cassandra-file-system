@@ -13,7 +13,7 @@ namespace CassandraFS
 {
     public class FileSystemRepository
     {
-        private static readonly HashSet<string> rootDirPaths = new HashSet<string> {"", "."};
+        private static readonly HashSet<string> rootDirPaths = new HashSet<string> {"", ".", Path.DirectorySeparatorChar.ToString()};
         private readonly FileRepository fileRepository;
         private readonly DirectoryRepository directoryRepository;
         private static readonly string rootDirectoryPath = Path.DirectorySeparatorChar.ToString();
@@ -38,7 +38,7 @@ namespace CassandraFS
             var parentDirPath = Path.GetDirectoryName(path);
             if (parentDirPath == null || rootDirPaths.Contains(parentDirPath) || rootDirPaths.Contains(path))
             {
-                parentDirPath = rootDirectoryPath;
+                return rootDirectoryPath;
             }
 
             return parentDirPath + Path.DirectorySeparatorChar;
