@@ -63,8 +63,8 @@ namespace CassandraFS.CassandraHandler
         {
             return directoriesTableEvent
                    .Where(directory => directory.Path == rootPath)
-                   .Select(x => GetDirectoryModel(x))
-                   .Execute();
+                   .Execute()
+                   .Select(GetDirectoryModel);
         }
 
         public void DeleteDirectory(string path)

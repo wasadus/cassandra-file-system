@@ -160,7 +160,10 @@ namespace StorageTests
             var cqlFile = GetCQLFileFromFileModel(file);
             fileRepository.WriteFile(file);
             var newFileName = Guid.NewGuid().ToString();
+
             fileRepository.RenameFile(file.Path + file.Name, file.Path + newFileName);
+            fileRepository.IsFileExists(Path.Combine(file.Path, file.Name)).Should().BeFalse();
+
             var actualFile = fileRepository.ReadFile(file.Path + newFileName);
             var actualCQLFile = ReadCQLFile(file.Path, newFileName);
             file.Name = newFileName;
