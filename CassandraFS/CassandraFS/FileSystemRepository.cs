@@ -223,7 +223,8 @@ namespace CassandraFS
 
         public Result RenameFile(string from, string to)
         {
-            return Result.Ok()
+            return CheckFileParentDirectory(from)
+                   .Check(() => !fileRepository.IsFileExists(from), FileSystemError.NoEntry)
                    .Check(() => !directoryRepository.IsDirectoryExists(to), FileSystemError.IsDirectory)
                    .Check(() => !fileRepository.IsFileExists(to), FileSystemError.AlreadyExist)
                    .Then(() =>

@@ -79,12 +79,17 @@ namespace CassandraFS.CassandraHandler
             var file = filesTableEvent
                        .FirstOrDefault(f => f.Path == parentDirPath && f.Name == fileName)
                        .Execute();
+            var timestamp = timestampProvider.UpdateTimestamp();
+            filesTableEvent
+                .Where(d => d.Path == parentDirPath && d.Name == fileName)
+                .Delete()
+                .SetTimestamp(timestamp)
+                .Execute();
             file.ModifiedTimestamp = DateTimeOffset.Now;
             var newParentDirPath = FileSystemRepository.GetParentDirectory(to);
             var newFileName = FileSystemRepository.GetFileName(to);
             file.Path = newParentDirPath;
             file.Name = newFileName;
-            var timestamp = timestampProvider.UpdateTimestamp();
             filesTableEvent.Insert(file).SetTTL(TTL).SetTimestamp(timestamp).Execute();
         }
 
@@ -184,8 +189,8 @@ namespace CassandraFS.CassandraHandler
         {
             var files = filesTableEvent
                         .Where(file => file.Path == rootPath)
-                        .Select(x => GetFileModel(x))
-                        .Execute();
+                        .Execute()
+                        .Select(GetFileModel);
             var fileModels = files.ToList();
             foreach (var fileModel in fileModels)
             {
