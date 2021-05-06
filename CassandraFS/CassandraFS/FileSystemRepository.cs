@@ -109,10 +109,7 @@ namespace CassandraFS
                            foreach (var file in filesToRename)
                            {
                                var filePath = file.Path + file.Name;
-                               fileRepository.DeleteFile(filePath);
-                               file.ModifiedTimestamp = DateTimeOffset.Now;
-                               file.Path = file.Path.Replace(from, to);
-                               fileRepository.WriteFile(file);
+                               fileRepository.RenameFile(filePath, file.Path.Replace(from, to) + file.Name);
                            }
                            foreach (var directory in directoriesToRename)
                            {
@@ -226,18 +223,12 @@ namespace CassandraFS
 
         public Result RenameFile(string from, string to)
         {
-            return ReadFile(from)
-                   .Check(file => !directoryRepository.IsDirectoryExists(to), FileSystemError.IsDirectory)
-                   .Check(file => !fileRepository.IsFileExists(to), FileSystemError.AlreadyExist)
-                   .Then(file =>
+            return Result.Ok()
+                   .Check(() => !directoryRepository.IsDirectoryExists(to), FileSystemError.IsDirectory)
+                   .Check(() => !fileRepository.IsFileExists(to), FileSystemError.AlreadyExist)
+                   .Then(() =>
                        {
-                           fileRepository.DeleteFile(from);
-                           var parentDirPath = GetParentDirectory(to);
-                           var fileName = GetFileName(to);
-                           file.Name = fileName;
-                           file.Path = parentDirPath;
-                           file.ModifiedTimestamp = DateTimeOffset.Now;
-                           fileRepository.WriteFile(file);
+                           fileRepository.RenameFile(from, to);
                            return Result.Ok();
                        });
         }

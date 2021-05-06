@@ -152,5 +152,23 @@ namespace StorageTests
             fileRepository.IsFileExists(file.Path + file.Name).Should().BeFalse();
             ReadCQLFile(file.Path, file.Name).Should().BeNull();
         }
+
+        [Test]
+        public void TestRenameFile()
+        {
+            var file = GetTestFileModel(Path.DirectorySeparatorChar.ToString());
+            var cqlFile = GetCQLFileFromFileModel(file);
+            fileRepository.WriteFile(file);
+            var newFileName = Guid.NewGuid().ToString();
+            fileRepository.RenameFile(file.Path + file.Name, file.Path + newFileName);
+            var actualFile = fileRepository.ReadFile(file.Path + newFileName);
+            var actualCQLFile = ReadCQLFile(file.Path, newFileName);
+            file.Name = newFileName;
+            cqlFile.Name = newFileName;
+            file.ModifiedTimestamp = actualFile.ModifiedTimestamp;
+            cqlFile.ModifiedTimestamp = actualCQLFile.ModifiedTimestamp;
+            CompareFileModel(file, actualFile);
+            CompareCQLFile(cqlFile, actualCQLFile);
+        }
     }
 }
