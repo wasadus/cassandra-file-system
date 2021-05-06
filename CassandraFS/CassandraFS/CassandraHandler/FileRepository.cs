@@ -72,6 +72,22 @@ namespace CassandraFS.CassandraHandler
             return fileModel;
         }
 
+        public void RenameFile(string from, string to)
+        {
+            var parentDirPath = FileSystemRepository.GetParentDirectory(from);
+            var fileName = FileSystemRepository.GetFileName(from);
+            var file = filesTableEvent
+                       .FirstOrDefault(f => f.Path == parentDirPath && f.Name == fileName)
+                       .Execute();
+            file.ModifiedTimestamp = DateTimeOffset.Now;
+            var newParentDirPath = FileSystemRepository.GetParentDirectory(to);
+            var newFileName = FileSystemRepository.GetFileName(to);
+            file.Path = newParentDirPath;
+            file.Name = newFileName;
+            var timestamp = timestampProvider.UpdateTimestamp();
+            filesTableEvent.Insert(file).SetTTL(TTL).SetTimestamp(timestamp).Execute();
+        }
+
         public void DeleteFile(string path)
         {
             var fileName = FileSystemRepository.GetFileName(path);

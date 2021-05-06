@@ -43,7 +43,7 @@ namespace StorageTests
         }
 
         [Test]
-        public void ReplaceBigFileWithSmallFile()
+        public void TestReplaceBigFileWithSmallFile()
         {
             var file = GetTestFileModel(Path.DirectorySeparatorChar.ToString());
             file.Data = GetTestBigFileData();
@@ -63,7 +63,7 @@ namespace StorageTests
         }
 
         [Test]
-        public void ReplaceSmallFileWithBigFile()
+        public void TestReplaceSmallFileWithBigFile()
         {
             var file = GetTestFileModel(Path.DirectorySeparatorChar.ToString());
             fileRepository.WriteFile(file);
@@ -79,6 +79,28 @@ namespace StorageTests
             var actualCQLFile = ReadCQLFile(file.Path, file.Name);
 
             CompareFileModel(smallFile, actualFile);
+            CompareCQLFile(cqlFile, actualCQLFile);
+        }
+
+        [Test]
+        public void TestRenameBigFile()
+        {
+            var file = GetTestFileModel(Path.DirectorySeparatorChar.ToString());
+            file.Data = GetTestBigFileData();
+
+            var cqlFile = GetCQLFileFromFileModel(file);
+            cqlFile.Data = new byte[0];
+            
+            fileRepository.WriteFile(file);
+            var newFileName = Guid.NewGuid().ToString();
+            fileRepository.RenameFile(file.Path + file.Name, file.Path + newFileName);
+            var actualFile = fileRepository.ReadFile(file.Path + newFileName);
+            var actualCQLFile = ReadCQLFile(file.Path, newFileName);
+            file.Name = newFileName;
+            cqlFile.Name = newFileName;
+            file.ModifiedTimestamp = actualFile.ModifiedTimestamp;
+            cqlFile.ModifiedTimestamp = actualCQLFile.ModifiedTimestamp;
+            CompareFileModel(file, actualFile);
             CompareCQLFile(cqlFile, actualCQLFile);
         }
     }
