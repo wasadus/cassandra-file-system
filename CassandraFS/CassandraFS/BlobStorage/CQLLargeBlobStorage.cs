@@ -17,11 +17,11 @@ namespace CassandraFS.BlobStorage
         private readonly int chunkSize;
         private readonly int maxBlobSize;
 
-        public CqlLargeBlobStorage(ISession session, int chunkSize)
+        public CqlLargeBlobStorage(ISession session)
         {
             blobMetaTable = new Table<TBlobMeta>(session);
             blobChunksTable = new Table<TBlobChunk>(session);
-            this.chunkSize = chunkSize;
+            chunkSize = 1024*1024*4;
             maxBlobSize = 64 * chunkSize;
         }
 

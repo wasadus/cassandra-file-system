@@ -26,7 +26,7 @@ namespace CassandraFS.CassandraHandler
             this.timestampProvider = timestampProvider;
             filesTableEvent = new Table<CQLFile>(session);
             dataBufferSize = config.DefaultDataBufferSize!.Value;
-            blobStorage = new CqlLargeBlobStorage<CQLFileContentMeta, CQLFileContent>(session, dataBufferSize);
+            blobStorage = new CqlLargeBlobStorage<CQLFileContentMeta, CQLFileContent>(session);
             TTL = config.DefaultTTL!.Value;
         }
 
@@ -48,6 +48,7 @@ namespace CassandraFS.CassandraHandler
             var timestamp = timestampProvider.UpdateTimestamp();
             if (cqlFile.ContentGuid.HasValue)
             {
+                Console.WriteLine($"WriteFile, TTL={TTL}, {TimeSpan.FromSeconds(TTL).Seconds}");
                 blobStorage.Write(cqlFile.ContentGuid.Value.ToString(), file.Data, timestamp, TimeSpan.FromSeconds(TTL));
             }
             else

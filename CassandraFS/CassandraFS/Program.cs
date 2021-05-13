@@ -27,7 +27,7 @@ namespace CassandraFS
             var config = JsonConvert.DeserializeObject<Config>(File.ReadAllText("config.json"));
             if (!config.DefaultTTL.HasValue || config.DefaultTTL.Value == 0)
             {
-                config.DefaultTTL = new TimeSpan(14, 0, 0, 0).Seconds;
+                config.DefaultTTL = (int)new TimeSpan(14, 0, 0, 0).TotalSeconds;
             }
             config.DefaultDataBufferSize ??= 4194304;
             container.Configurator.ForAbstraction<Config>().UseInstances(config);
@@ -39,6 +39,7 @@ namespace CassandraFS
             var constructor = container.GetCreationFunc<string[], CassandraFileSystem>();
             using var fs = constructor(args);
             logger.Info("Starting filesystem");
+            logger.Info($"Programm TTL = {config.DefaultTTL.Value}, {new TimeSpan(14, 0, 0, 0).TotalSeconds}");
             fs.Start();
         }
     }
