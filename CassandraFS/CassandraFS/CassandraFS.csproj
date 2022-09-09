@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
   </PropertyGroup>
 
@@ -19,15 +19,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="CassandraCSharpDriver" Version="3.16.1" />
-    <PackageReference Include="GroboContainer" Version="1.2.52" />
-    <PackageReference Include="GroBuf" Version="1.6.1" />
+    <PackageReference Include="CassandraCSharpDriver" Version="3.18.0" />
+    <PackageReference Include="GroboContainer" Version="1.2.62" />
+    <PackageReference Include="GroBuf" Version="1.8.1" />
     <PackageReference Include="Mono.Fuse.NETStandard" Version="1.1.0" />
     <PackageReference Include="morelinq" Version="3.3.2" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-    <PackageReference Include="Vostok.Logging.Console" Version="1.0.5" />
-    <PackageReference Include="Vostok.Logging.File" Version="1.0.12" />
-    <PackageReference Include="Vostok.Logging.Microsoft" Version="2.0.11" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="Vostok.Logging.Console" Version="1.0.9" />
+    <PackageReference Include="Vostok.Logging.File" Version="1.0.22" />
+    <PackageReference Include="Vostok.Logging.Microsoft" Version="2.0.13" />
   </ItemGroup>
 
 </Project>

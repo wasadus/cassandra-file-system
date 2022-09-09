@@ -123,7 +123,7 @@ namespace StorageTests
             actual.Path.Should().Be(expected.Path);
             actual.GID.Should().Be(expected.GID);
             actual.UID.Should().Be(expected.UID);
-            actual.ModifiedTimestamp.Should().BeCloseTo(expected.ModifiedTimestamp);
+            actual.ModifiedTimestamp.Should().BeCloseTo(expected.ModifiedTimestamp, precision: TimeSpan.FromMilliseconds(20));
             actual.FilePermissions.Should().HaveFlag(expected.FilePermissions);
         }
 
@@ -150,7 +150,7 @@ namespace StorageTests
             actual.Path.Should().Be(expected.Path);
             actual.GID.Should().Be(expected.GID);
             actual.UID.Should().Be(expected.UID);
-            actual.ModifiedTimestamp.Should().BeCloseTo(expected.ModifiedTimestamp);
+            actual.ModifiedTimestamp.Should().BeCloseTo(expected.ModifiedTimestamp, precision: TimeSpan.FromMilliseconds(20));
             actual.FilePermissions.Should().BeGreaterOrEqualTo(expected.FilePermissions);
         }
 
@@ -185,7 +185,7 @@ namespace StorageTests
             actual.Path.Should().Be(expected.Path);
             actual.GID.Should().Be(expected.GID);
             actual.UID.Should().Be(expected.UID);
-            actual.ModifiedTimestamp.Should().BeCloseTo(expected.ModifiedTimestamp);
+            actual.ModifiedTimestamp.Should().BeCloseTo(expected.ModifiedTimestamp, precision: TimeSpan.FromMilliseconds(20));
             actual.FilePermissions.Should().HaveFlag(expected.FilePermissions);
             if (actual.Data != null && expected.Data != null)
             {
@@ -225,7 +225,7 @@ namespace StorageTests
             actual.Path.Should().Be(expected.Path);
             actual.GID.Should().Be(expected.GID);
             actual.UID.Should().Be(expected.UID);
-            actual.ModifiedTimestamp.Should().BeCloseTo(expected.ModifiedTimestamp);
+            actual.ModifiedTimestamp.Should().BeCloseTo(expected.ModifiedTimestamp, precision: TimeSpan.FromMilliseconds(20));
             actual.FilePermissions.Should().BeGreaterOrEqualTo(expected.FilePermissions);
             if (actual.Data != null && expected.Data != null)
             {

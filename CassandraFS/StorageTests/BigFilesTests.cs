@@ -4,8 +4,6 @@ using System.Linq;
 
 using FluentAssertions;
 
-using MoreLinq;
-
 using NUnit.Framework;
 
 namespace StorageTests
@@ -113,7 +111,7 @@ namespace StorageTests
 
             var cqlFile = GetCQLFileFromFileModel(file);
             cqlFile.Data = new byte[0];
-            
+
             fileRepository.WriteFile(file);
             var newFileName = Guid.NewGuid().ToString();
             fileRepository.RenameFile(file.Path + file.Name, file.Path + newFileName);
