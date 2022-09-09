@@ -75,7 +75,8 @@ namespace CassandraFS
                 "\"blob_version\" uuid, " +
                 "\"chunk_id\" smallint, " +
                 "\"chunk_bytes\" blob, " +
-                "PRIMARY KEY(blob_version, chunk_id));"
+                "PRIMARY KEY((blob_version), chunk_id))" +
+                "WITH CLUSTERING ORDER BY (chunk_id ASC);"
             );
             session.Execute(
                 $"CREATE TABLE IF NOT EXISTS \"{config.MessageSpaceName}\".\"FilesContentMeta\" (" +

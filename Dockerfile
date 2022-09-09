@@ -15,7 +15,8 @@ RUN apt-get update
 RUN apt-get update && apt-get install -y --no-install-recommends apt-utils
 RUN apt-get upgrade -y
 RUN apt-get update --fix-missing
-RUN apt-get install -y dotnet-sdk-3.1
+RUN apt-get install -y dotnet-sdk-6.0
+RUN apt-get install -y aspnetcore-runtime-6.0
 RUN apt-get install -y fuse
 RUN apt-get install -y libfuse-dev
 

@@ -1,27 +1,19 @@
 ﻿using System;
 using System.IO;
 using System.Text;
-using System.Security.AccessControl;
 
 using FluentAssertions;
-
-using Newtonsoft.Json;
 
 using NUnit.Framework;
 
 namespace FileSystemTests
 {
-    public class Tests
+    public class DirectoryTests
     {
         private readonly string mountPoint = "/home/cassandra-fs/";
 
-        [SetUp]
-        public void Setup()
-        {
-        }
-
         [Test]
-        public void TestWriteValidFile()
+        public void TestWriteValidDirectory()
         {
             var fileName = Guid.NewGuid().ToString();
             var fileContent = Guid.NewGuid().ToString();
@@ -32,9 +24,26 @@ namespace FileSystemTests
         }
 
         [Test]
-        public void TestRenameDirectory()
+        public void TestWriteDirectoryInNonExistingDirectoryReturnsError()
         {
 
+        }
+
+        [Test]
+        public void TestWriteDirectoryInsideFileReturnsError()
+        {
+
+        }
+
+        [Test]
+        public void TestWriteDirectoryWithIncorrectName()
+        {
+
+        }
+
+        [Test]
+        public void TestRenameDirectory()
+        {
             var directoryName = Path.Combine(mountPoint, Guid.NewGuid().ToString());
             Directory.CreateDirectory(directoryName);
 
@@ -55,6 +64,18 @@ namespace FileSystemTests
 
             File.Exists(Path.Combine(directoryName, fileName)).Should().BeFalse();
             File.Exists(Path.Combine(newDirectoryName, fileName)).Should().BeTrue();
+        }
+
+        [Test]
+        public void TestWriteManyDirectories()
+        {
+
+        }
+
+        [Test]
+        public void TestDeleteDirectory()
+        {
+
         }
     }
 }

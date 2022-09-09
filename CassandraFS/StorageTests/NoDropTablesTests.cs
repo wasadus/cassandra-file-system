@@ -162,11 +162,11 @@ namespace StorageTests
         {
             var directory = GetTestDirectoryModel(Path.DirectorySeparatorChar.ToString());
             directoryRepository.WriteDirectory(directory);
-            directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().BeTrue();
+            directoryRepository.IsDirectoryExists(Path.Combine(directory.Path, directory.Name)).Should().BeTrue();
             ReadCQLDirectory(directory.Path, directory.Name).Should().NotBeNull();
-            directoryRepository.DeleteDirectory(directory.Path + directory.Name);
+            directoryRepository.DeleteDirectory(Path.Combine(directory.Path, directory.Name));
             OneTimeSetup();
-            directoryRepository.IsDirectoryExists(directory.Path + directory.Name).Should().BeFalse();
+            directoryRepository.IsDirectoryExists(Path.Combine(directory.Path, directory.Name)).Should().BeFalse();
             ReadCQLDirectory(directory.Path, directory.Name).Should().BeNull();
         }
     }

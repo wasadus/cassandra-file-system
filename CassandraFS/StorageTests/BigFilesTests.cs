@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 
 using FluentAssertions;
 
@@ -81,6 +82,26 @@ namespace StorageTests
             CompareFileModel(smallFile, actualFile);
             CompareCQLFile(cqlFile, actualCQLFile);
         }
+        [Test]
+        public void TestReplaceBigFileWithBigFile()
+        {
+            var file = GetTestFileModel(Path.DirectorySeparatorChar.ToString());
+            file.Data = GetTestBigFileData();
+            fileRepository.WriteFile(file);
+
+            var smallFile = fileRepository.ReadFile(file.Path + file.Name);
+            smallFile.Data = GetTestBigFileData().Concat(GetTestBigFileData()).ToArray();
+            fileRepository.WriteFile(smallFile);
+
+            var cqlFile = GetCQLFileFromFileModel(smallFile);
+            cqlFile.Data = new byte[0];
+
+            var actualFile = fileRepository.ReadFile(file.Path + file.Name);
+            var actualCQLFile = ReadCQLFile(file.Path, file.Name);
+
+            CompareFileModel(smallFile, actualFile);
+            CompareCQLFile(cqlFile, actualCQLFile);
+        }
 
         [Test]
         public void TestRenameBigFile()
@@ -90,7 +111,7 @@ namespace StorageTests
 
             var cqlFile = GetCQLFileFromFileModel(file);
             cqlFile.Data = new byte[0];
-            
+
             fileRepository.WriteFile(file);
             var newFileName = Guid.NewGuid().ToString();
             fileRepository.RenameFile(file.Path + file.Name, file.Path + newFileName);

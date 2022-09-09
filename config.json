@@ -1,17 +1,17 @@
 {
-  "MountPointPath": "/home/cassandra-fs/", 
+  "MountPointPath": "/home/cassandra-fs/",
   "CassandraEndPoints": [
     {
       "Host": "cassandra"
     }
   ],
   "MessageSpaceName": "FTPMessageSpace",
-  "DropFilesTable": false,
-  "DropFilesContentTable": false,
-  "DropFilesContentMetaTable": false,
-  "DropDirectoriesTable": false,
+  "DropFilesTable": true,
+  "DropFilesContentTable": true,
+  "DropFilesContentMetaTable": true,
+  "DropDirectoriesTable": true,
   "ConnectionAttemptsCount": 5,
   "ReconnectTimeout": 5000,
   "DefaultTTL": null,
-  "DefaultDataBufferSize": 4194304
+  "DefaultDataBufferSize": 131072
 }

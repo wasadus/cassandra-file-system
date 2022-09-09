@@ -36,11 +36,11 @@ namespace StorageTests
             var file = GetTestFileModel(Path.DirectorySeparatorChar.ToString());
             fileRepository.WriteFile(file);
             Thread.Sleep(4000);
-            var actualFile = fileRepository.ReadFile(file.Path + file.Name);
+            var actualFile = fileRepository.ReadFile(Path.Combine(file.Path, file.Name));
             var actualCQLFile = ReadCQLFile(file.Path, file.Name);
             actualCQLFile.Should().BeNull();
             actualFile.Should().BeNull();
-            fileRepository.IsFileExists(file.Path + file.Name).Should().BeFalse();
+            fileRepository.IsFileExists(Path.Combine(file.Path, file.Name)).Should().BeFalse();
         }
 
         [Test]
@@ -50,11 +50,11 @@ namespace StorageTests
             file.Data = GetTestBigFileData();
             fileRepository.WriteFile(file);
             Thread.Sleep(4000);
-            var actualFile = fileRepository.ReadFile(file.Path + file.Name);
+            var actualFile = fileRepository.ReadFile(Path.Combine(file.Path, file.Name));
             var actualCQLFile = ReadCQLFile(file.Path, file.Name);
             actualCQLFile.Should().BeNull();
             actualFile.Should().BeNull();
-            fileRepository.IsFileExists(file.Path + file.Name).Should().BeFalse();
+            fileRepository.IsFileExists(Path.Combine(file.Path,file.Name)).Should().BeFalse();
         }
     }
 }
