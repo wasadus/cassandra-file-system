@@ -3,7 +3,7 @@
 run_fuse() {
   while true;
   do
-    dotnet CassandraFS/CassandraFS/bin/Debug/netcoreapp3.1/CassandraFS.dll
+    dotnet CassandraFS/CassandraFS/bin/Debug/net6.0/CassandraFS.dll
     sleep 1
   done
 }
