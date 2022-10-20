@@ -10,6 +10,8 @@ using NUnit.Framework;
 
 using Vostok.Logging.Abstractions;
 using Vostok.Logging.Console;
+using Vostok.Logging.File;
+using Vostok.Logging.File.Configuration;
 
 namespace FileSystemTests
 {
@@ -23,7 +25,8 @@ namespace FileSystemTests
         [SetUp]
         public void SetUp()
         {
-            logger = new CompositeLog(new ConsoleLog().WithDisabledLevels(LogLevel.Info));
+            var settings = new FileLogSettings();
+            logger = new CompositeLog(new ConsoleLog().WithDisabledLevels(LogLevel.Info), new FileLog(settings).WithDisabledLevels(LogLevel.Info));
             testDirectory = Path.Combine(mountPoint, Guid.NewGuid().ToString());
             Directory.CreateDirectory(testDirectory);
         }
