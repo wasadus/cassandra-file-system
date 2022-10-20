@@ -56,7 +56,7 @@ namespace StorageTests
             var configuration = new ContainerConfiguration(typeof(CassandraFileSystem).Assembly);
             var container = new Container(configuration);
             var settings = new FileLogSettings();
-            var logger = new CompositeLog(new ConsoleLog(), new FileLog(settings));
+            var logger = new CompositeLog(new ConsoleLog().WithDisabledLevels(LogLevel.Info), new FileLog(settings).WithDisabledLevels(LogLevel.Info));
             container.Configurator.ForAbstraction<ILog>().UseInstances(logger);
             container.Configurator.ForAbstraction<Config>().UseInstances(Config);
             CassandraConfigurator.ConfigureCassandra(container, logger);

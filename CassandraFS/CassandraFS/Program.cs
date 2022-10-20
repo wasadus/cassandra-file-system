@@ -21,7 +21,7 @@ namespace CassandraFS
             var container = new Container(configuration);
 
             var settings = new FileLogSettings();
-            var logger = new CompositeLog(new ConsoleLog(), new FileLog(settings));
+            var logger = new CompositeLog(new ConsoleLog().WithDisabledLevels(LogLevel.Info), new FileLog(settings).WithDisabledLevels(LogLevel.Info));
             container.Configurator.ForAbstraction<ILog>().UseInstances(logger);
 
             var config = JsonConvert.DeserializeObject<Config>(File.ReadAllText("config.json"));
@@ -34,12 +34,12 @@ namespace CassandraFS
 
             CassandraConfigurator.ConfigureCassandra(container, logger);
 
-            logger.Info("Creating filesystem...");
+            logger.Warn("Creating filesystem...");
 
             var constructor = container.GetCreationFunc<string[], CassandraFileSystem>();
             using var fs = constructor(args);
-            logger.Info("Starting filesystem");
-            logger.Info($"Programm TTL = {config.DefaultTTL.Value}, {new TimeSpan(14, 0, 0, 0).TotalSeconds}");
+            logger.Warn("Starting filesystem");
+            logger.Warn($"Programm TTL = {config.DefaultTTL.Value}, {new TimeSpan(14, 0, 0, 0).TotalSeconds}");
             fs.Start();
         }
     }
