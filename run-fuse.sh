@@ -1,7 +1,7 @@
 #!/bin/sh
 
 run_fuse() {
-  while true;
+  for ((i=1; i < 10; i++))
   do
     dotnet CassandraFS/CassandraFS/bin/Debug/net6.0/CassandraFS.dll
     sleep 1
@@ -9,7 +9,7 @@ run_fuse() {
 }
 
 run_tests() {
-  while true;
+  for ((i=1; i < 10; i++))
   do
 	dotnet test CassandraFS/FileSystemTests/FileSystemTests.csproj
 	sleep 2
@@ -18,7 +18,7 @@ run_tests() {
 
 mkdir /home/cassandra-fs
 
-if [ $TESTING -eq 1 ]
+if [ $TESTING -eq 0 ]
 then
   run_fuse &
   proftpd --nodaemon &
