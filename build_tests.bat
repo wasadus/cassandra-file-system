@@ -1,2 +1,2 @@
-docker-compose -f docker-compose-tests.yaml up --build 
+docker-compose -f %~dp0docker-compose-tests.yaml up --build 
 pause
