@@ -1,2 +1,2 @@
-docker-compose -f docker-compose.yaml up --build 
+docker-compose -f %~dp0docker-compose.yaml up --build 
 pause

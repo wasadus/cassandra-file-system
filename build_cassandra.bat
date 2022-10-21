@@ -1,2 +1,2 @@
-docker-compose -f docker-cassandra.yaml up --build
+docker-compose -f %~dp0docker-cassandra.yaml up --build
 pause
