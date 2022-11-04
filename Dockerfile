@@ -1,4 +1,4 @@
-FROM kibatic/proftpd:latest
+FROM kibatic/proftpd@sha256:2965544d873d20b22ca9e9e4853bf56bac2351f3e1acc50c4c34e64e849f2ea2
 
 WORKDIR /app
 
