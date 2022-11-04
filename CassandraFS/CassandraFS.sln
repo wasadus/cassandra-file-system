@@ -13,6 +13,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		..\docker-compose.yaml = ..\docker-compose.yaml
 		..\docker-filesystem.yaml = ..\docker-filesystem.yaml
 		..\Dockerfile = ..\Dockerfile
+		..\build_all.bat = ..\build_all.bat
+		..\build_tests.bat = ..\build_tests.bat
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StorageTests", "StorageTests\StorageTests.csproj", "{39ED0229-2B3E-4F2F-B89A-5D2389E40103}"
