@@ -4,7 +4,7 @@ services:
     cassandra:
         # restart: always
         hostname: my-cassandra
-        image: cassandra:3.11.2
+        image: cassandra
         ports:
             - "9042:9042"
         environment:
@@ -13,8 +13,6 @@ services:
            CASSANDRA_BROADCAST_ADDRESS: "127.0.0.1"
            CASSANDRA_LISTEN_ADDRESS: "127.0.0.1"
 #         127.0.0.1 default
-        volumes:
-            - "logs/cassandra:/var/log/cassandra/"
         healthcheck:
             test: [ "CMD", "nodetool", "-u", "cassandra", "-pw", "cassandra",  "status" ]
             interval: 5s
