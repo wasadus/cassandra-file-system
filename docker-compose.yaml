@@ -22,4 +22,3 @@ services:
         environment:
             FTP_LIST: "cassandra-fs:pass"
             TESTING: 0
-        restart: always

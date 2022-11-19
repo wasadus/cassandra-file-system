@@ -9,6 +9,8 @@ services:
         environment:
             - CASSANDRA_BROADCAST_ADDRESS=127.0.0.1
             - CASSANDRA_LISTEN_ADDRESS=127.0.0.1
+        volumes:
+          - "C:/FTP/Test/logs/cassandra:/var/log/cassandra/"
     filesystem:
         depends_on:
             - cassandra
@@ -20,4 +22,6 @@ services:
         environment:
           FTP_LIST: "cassandra-fs:pass"
           TESTING: 1
-        restart: always
+        volumes:
+          - "C:/FTP/Test/logs/FS:/app/CassandraFS/CassandraFS/bin/Debug/net6.0/logs"
+          - "C:/FTP/Test/logs/FS/testing:/app/CassandraFS/FileSystemTests/bin/Debug/net6.0/logs"
