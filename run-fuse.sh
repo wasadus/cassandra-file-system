@@ -3,17 +3,17 @@
 run_fuse() {
   while true;
   do
-    dotnet CassandraFS/CassandraFS/bin/Debug/netcoreapp3.1/CassandraFS.dll
+    dotnet CassandraFS/CassandraFS/bin/Debug/net6.0/CassandraFS.dll
     sleep 1
   done
 }
 
 run_tests() {
-  while true;
-  do
+#  for ((i=1; i < 2; i++))
+ # do
 	dotnet test CassandraFS/FileSystemTests/FileSystemTests.csproj
 	sleep 2
-  done
+#  done
 }
 
 mkdir /home/cassandra-fs

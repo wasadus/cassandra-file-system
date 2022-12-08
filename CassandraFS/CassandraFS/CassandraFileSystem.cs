@@ -18,10 +18,10 @@ namespace CassandraFS
 
         public CassandraFileSystem(string[] args, FileSystemRepository fileSystemRepository, ILog logger, Config config)
         {
-            logger.Info("Parsing filesystem args...");
+            logger.Warn("Parsing filesystem args...");
             ParseFuseArguments(args);
             MountPoint = config.MountPointPath;
-            logger.Info("Parsing filesystem args... complete");
+            logger.Warn("Parsing filesystem args... complete");
             this.logger = logger;
             this.fileSystemRepository = fileSystemRepository;
             FileLog.FlushAll();
