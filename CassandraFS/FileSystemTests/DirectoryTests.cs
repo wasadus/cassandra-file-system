@@ -26,13 +26,36 @@ namespace FileSystemTests
         [Test]
         public void TestWriteDirectoryInNonExistingDirectoryReturnsError()
         {
+            var outerDirectoryName = Guid.NewGuid().ToString();
+            var outerDirectoryPath = Path.Combine(mountPoint, outerDirectoryName);
 
+            var innerDirectoryName = Guid.NewGuid().ToString();
+            var innerDirectoryPath = Path.Combine(outerDirectoryPath, innerDirectoryName);
+
+            var info = Directory.CreateDirectory(innerDirectoryPath);  // Создаем папку, не создавая родительскую
+
+            //info.Should().NotBeNull();
+            //info.Exists.Should().BeFalse();
+            // Console.Error.WriteLine(info.ToString());
+            // Console.Error.WriteLine(info.Exists);
+            // Console.Error.WriteLine(info.Parent);
+            // Console.Error.WriteLine(info.FullName);
+            //info.Parent.Should().BeNull();
+
+            Directory.Exists(outerDirectoryName).Should().BeFalse(); //Или не должна существовать?
+            Directory.Exists(innerDirectoryName).Should().BeFalse();
         }
 
         [Test]
         public void TestWriteDirectoryInsideFileReturnsError()
         {
+            var fileName = Guid.NewGuid().ToString();
+            var filePath = Path.Combine(mountPoint, fileName);
+            File.Create(filePath);
 
+            var directoryName = Path.Combine(filePath, Guid.NewGuid().ToString());
+            var action = () => Directory.CreateDirectory(directoryName);
+            action.Should().Throw<IOException>();
         }
 
         [Test]
@@ -75,7 +98,27 @@ namespace FileSystemTests
         [Test]
         public void TestDeleteDirectory()
         {
+            var directoryName = Path.Combine(mountPoint, Guid.NewGuid().ToString());
+            Directory.CreateDirectory(directoryName);
 
+            Directory.Delete(directoryName);
+
+            Directory.Exists(directoryName).Should().BeFalse();
+        }
+
+        [Test]
+        public void TestFilesInDeletedDirectoryAreDeleted()
+        {
+            var directoryName = Path.Combine(mountPoint, Guid.NewGuid().ToString());
+            Directory.CreateDirectory(directoryName);
+
+            var fileName = Guid.NewGuid().ToString();
+            var filePath = Path.Combine(directoryName, fileName);
+            File.Create(filePath);
+
+            Directory.Delete(directoryName);
+
+            File.Exists(filePath).Should().BeFalse();
         }
     }
 }
