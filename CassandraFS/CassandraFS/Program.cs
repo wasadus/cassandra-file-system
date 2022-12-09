@@ -21,7 +21,7 @@ namespace CassandraFS
             var container = new Container(configuration);
 
             var settings = new FileLogSettings();
-            var logger = new CompositeLog(new ConsoleLog().WithDisabledLevels(LogLevel.Info), new FileLog(settings).WithDisabledLevels(LogLevel.Info));
+            var logger = new CompositeLog(new ConsoleLog(), new FileLog(settings)).WithDisabledLevels(LogLevel.Info);
             container.Configurator.ForAbstraction<ILog>().UseInstances(logger);
 
             var config = JsonConvert.DeserializeObject<Config>(File.ReadAllText("config.json"));
