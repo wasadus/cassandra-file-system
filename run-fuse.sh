@@ -11,8 +11,8 @@ run_fuse() {
 run_tests() {
 #  for ((i=1; i < 2; i++))
 #  do
-    sleep 10
-    #dotnet test CassandraFS/FileSystemTests/FileSystemTests.csproj --filter Name=TestWriteDirectoryInsideFileReturnsError
+    #sleep 10
+    #dotnet test CassandraFS/FileSystemTests/FileSystemTests.csproj --filter Name=TestFilesInDeletedDirectoryAreDeleted_WhenRecursive
     dotnet test CassandraFS/FileSystemTests/FileSystemTests.csproj
     #sleep 2
     
