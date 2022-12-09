@@ -114,7 +114,9 @@ namespace FileSystemTests
 
             var fileName = Guid.NewGuid().ToString();
             var filePath = Path.Combine(directoryName, fileName);
-            File.Create(filePath);
+            {
+                using var file = File.Create(filePath);
+            }
 
             Directory.Delete(directoryName, recursive: true);
 
@@ -129,10 +131,18 @@ namespace FileSystemTests
 
             var fileName = Guid.NewGuid().ToString();
             var filePath = Path.Combine(directoryName, fileName);
-            File.Create(filePath);
+            {
+                using var file = File.Create(filePath);
+                file.Write(Guid.NewGuid().ToByteArray());
+                file.Flush();
+            }
+
+            File.Exists(filePath).Should().BeTrue();
 
             var action = () => Directory.Delete(directoryName, recursive: false);
             action.Should().Throw<IOException>();
+
+            File.Exists(filePath).Should().BeTrue();
         }
     }
 }
