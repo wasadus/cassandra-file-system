@@ -107,7 +107,7 @@ namespace FileSystemTests
         }
 
         [Test]
-        public void TestFilesInDeletedDirectoryAreDeleted()
+        public void TestFilesInDeletedDirectoryAreDeleted_WhenRecursive()
         {
             var directoryName = Path.Combine(mountPoint, Guid.NewGuid().ToString());
             Directory.CreateDirectory(directoryName);
@@ -116,9 +116,23 @@ namespace FileSystemTests
             var filePath = Path.Combine(directoryName, fileName);
             File.Create(filePath);
 
-            Directory.Delete(directoryName);
+            Directory.Delete(directoryName, recursive: true);
 
             File.Exists(filePath).Should().BeFalse();
+        }
+
+        [Test]
+        public void TestDeleteThrows_WhenDirectoryIsNotEmpty()
+        {
+            var directoryName = Path.Combine(mountPoint, Guid.NewGuid().ToString());
+            Directory.CreateDirectory(directoryName);
+
+            var fileName = Guid.NewGuid().ToString();
+            var filePath = Path.Combine(directoryName, fileName);
+            File.Create(filePath);
+
+            var action = () => Directory.Delete(directoryName, recursive: false);
+            action.Should().Throw<IOException>();
         }
     }
 }

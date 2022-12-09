@@ -26,7 +26,7 @@ namespace FileSystemTests
         public void SetUp()
         {
             var settings = new FileLogSettings();
-            logger = new CompositeLog(new ConsoleLog().WithDisabledLevels(LogLevel.Info), new FileLog(settings).WithDisabledLevels(LogLevel.Info));
+            logger = new CompositeLog(new ConsoleLog(), new FileLog(settings));
             testDirectory = Path.Combine(mountPoint, Guid.NewGuid().ToString());
             Directory.CreateDirectory(testDirectory);
         }
@@ -187,18 +187,26 @@ namespace FileSystemTests
             var actualContent = File.ReadAllBytes(filePath);
             actualContent.Should().BeEquivalentTo(fileContent);
 
-            fileContent = new byte[0];
-            var file = File.OpenWrite(filePath);
-            file.Seek(0, SeekOrigin.Begin);
-            file.Write(fileContent);
-            file.Close();
+            fileContent = Array.Empty<byte>();
+            {
+                using var file = File.OpenWrite(filePath);
+                file.Seek(0, SeekOrigin.Begin);
+                file.Write(fileContent);
+                file.SetLength(fileContent.Length);
+                file.Flush();
+                file.Close();
+            }
+
             actualContent = File.ReadAllBytes(filePath);
             actualContent.Should().BeEquivalentTo(fileContent);
 
             fileContent = Guid.NewGuid().ToByteArray();
-            file = File.OpenWrite(filePath);
-            file.Write(fileContent);
-            file.Close();
+            {
+                using var file = File.OpenWrite(filePath);
+                file.Write(fileContent);
+                file.Flush();
+                file.Close();
+            }
             actualContent = File.ReadAllBytes(filePath);
             actualContent.Should().BeEquivalentTo(fileContent);
             logger.Warn($"test {nameof(TestChangeFile)} passed with elapsed {sw.ElapsedMilliseconds}");
