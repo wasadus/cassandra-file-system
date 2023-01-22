@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
     cassandra:
-        restart: always
+#        restart: always
         image: cassandra
         ports:
             - "9042:9042"
