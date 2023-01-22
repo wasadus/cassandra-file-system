@@ -1,0 +1,32 @@
+name: FTP
+
+on:
+  push:
+    branches: [ "*" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build the Docker image
+      run: build-test.bat
+      
+    - uses: actions/checkout@v2
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 6.0.x
+    - name: Restore dependencies
+      run: |
+           dotnet restore StorageTests/
+    - name: Build
+      run: |
+           dotnet build StorageTests/ --no-restore
+    - name: Test
+      run: |
+           dotnet test StorageTests/ --no-build --verbosity normal
+
