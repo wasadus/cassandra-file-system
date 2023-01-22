@@ -13,7 +13,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build the Docker image
-      run: docker-compose -f %~dp0docker-compose-tests.yaml up --build
+      run: docker-compose -f docker-compose-tests.yaml up --build
       
     - uses: actions/checkout@v2
     - name: Setup .NET
