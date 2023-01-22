@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
     filesystem:
-  #      restart: always
+#        restart: always
         build: .
         privileged: true
 #        command: dotnet CassandraFS/CassandraFS/bin/Debug/netcoreapp3.1/CassandraFS.dll /app/containerMountPoint
@@ -10,17 +10,17 @@ services:
         ports:
             - "5000:80"
         volumes:
- #           - type: volume
-  #            source: mountPoint
-   #           target: /mountPoint
-            - "/home/jazzmutant/Work/CassandraFS/mountPoint:/app/containerMountPoint"
+#            - type: volume
+#              source: mountPoint
+#              target: /mountPoint
+            - "/home/CassandraFS/mountPoint:/app/containerMountPoint"
 #    ftp:
- #       image: kibatic/proftpd
-  #      network_mode: "host"
+#        image: kibatic/proftpd
+#        network_mode: "host"
 #        restart: unless-stopped
- #       privileged: true
-   #     environment:
-    #       FTP_LIST: "user:pass"
-     #      USERADD_OPTIONS: "-o --gid 33 --uid 33"
+#        privileged: true
+#        environment:
+#           FTP_LIST: "user:pass"
+#           USERADD_OPTIONS: "-o --gid 33 --uid 33"
 #        volumes:
- #           - ./mountPoint:/home/user
+#            - ./mountPoint:/home/user
