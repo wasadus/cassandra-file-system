@@ -22,8 +22,22 @@ services:
         build: .
         privileged: true
         ports:
-            - "21:21"
+#            - "21:21"
             - "30000-30009:30000-30009"
         environment:
             FTP_LIST: "cassandra-fs:pass"
             TESTING: 0
+        
+    ftp:
+        image: kibatic/proftpd
+        network_mode: "host"
+        restart: unless-stopped
+        ports:
+            - "21:21"
+            - "30010:30010"
+        privileged: true
+        environment:
+            FTP_LIST: "user:pass"
+            USERADD_OPTIONS: "-o --gid 33 --uid 33"
+        volumes:
+            - ./mountPoint:/home/user
