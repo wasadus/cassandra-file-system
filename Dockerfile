@@ -15,7 +15,7 @@ RUN apt update \
   && apt upgrade -y \
   && apt update --fix-missing \
   && apt install -y \
-  dotnet-runtime-6.0 \
+  dotnet-sdk-6.0 \
   fuse \
   libfuse-dev \
   libgtk2.0-dev \
