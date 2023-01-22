@@ -17,18 +17,16 @@ RUN apt-get update \
   && apt-get update --fix-missing
 
 RUN apt-get install -y dotnet-sdk-6.0 \
-  && apt-get install -y aspnetcore-runtime-6.0 \
-  && apt-get install -y fuse \
-  && apt-get install -y libfuse-dev \
-  && apt-get install libgtk2.0-dev -y \
-  && apt-get install libglib2.0-dev -y
+  && apt install -y aspnetcore-runtime-6.0 \
+  && apt install -y fuse \
+  && apt install -y libfuse-dev \
+  && apt install libgtk2.0-dev -y \
+  && apt install libglib2.0-dev -y
 
 RUN apt-get -y install sudo
 
-ADD . .
-RUN chmod +x build-libs.sh \
-  && chmod +x run-fuse.sh \
-  && sh build-libs.sh 
+COPY . .
+RUN sh build-libs.sh 
     
 COPY proftpd.conf /etc/proftpd/proftpd.conf
-CMD ./run-fuse.sh
+CMD sh run-fuse.sh
