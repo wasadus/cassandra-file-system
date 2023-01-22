@@ -11,13 +11,11 @@ RUN apt update \
   && wget -q https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb \
   && dpkg -i packages-microsoft-prod.deb \
   && rm packages-microsoft-prod.deb \
-  && apt update \
   && apt install -y --no-install-recommends apt-utils \
   && apt upgrade -y \
   && apt update --fix-missing \
   && apt install -y \
-  dotnet-sdk-6.0 \
-  aspnetcore-runtime-6.0 \
+  dotnet-runtime-6.0 \
   fuse \
   libfuse-dev \
   libgtk2.0-dev \
