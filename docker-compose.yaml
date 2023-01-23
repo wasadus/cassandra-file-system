@@ -11,6 +11,11 @@ services:
             CASSANDRA_LISTEN_ADDRESS: "127.0.0.1"
         volumes:
             - "C:/FTP/logs/cassandra:/var/log/cassandra/"
+#        healthcheck:
+#            test: [ "CMD", "nodetool", "-u", "cassandra", "-pw", "cassandra",  "status" ]
+#            interval: 5s
+#            timeout: 10s
+#            retries: 60
     filesystem:
         depends_on:
             - cassandra

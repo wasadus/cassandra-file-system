@@ -26,19 +26,48 @@ namespace FileSystemTests
         [Test]
         public void TestWriteDirectoryInNonExistingDirectoryReturnsError()
         {
+            var outerDirectoryName = Guid.NewGuid().ToString();
+            var outerDirectoryPath = Path.Combine(mountPoint, outerDirectoryName);
 
+            var innerDirectoryName = Guid.NewGuid().ToString();
+            var innerDirectoryPath = Path.Combine(outerDirectoryPath, innerDirectoryName);
+
+            var info = Directory.CreateDirectory(innerDirectoryPath);  // Создаем папку, не создавая родительскую
+
+            //info.Should().NotBeNull();
+            //info.Exists.Should().BeFalse();
+            // Console.Error.WriteLine(info.ToString());
+            // Console.Error.WriteLine(info.Exists);
+            // Console.Error.WriteLine(info.Parent);
+            // Console.Error.WriteLine(info.FullName);
+            //info.Parent.Should().BeNull();
+
+            Directory.Exists(outerDirectoryName).Should().BeFalse();
+            Directory.Exists(innerDirectoryName).Should().BeFalse();
         }
 
         [Test]
         public void TestWriteDirectoryInsideFileReturnsError()
         {
+            var fileName = Guid.NewGuid().ToString();
+            var filePath = Path.Combine(mountPoint, fileName);
+            using (File.Create(filePath)) {}
+            File.Exists(filePath).Should().BeTrue();
 
+            var directoryName = Path.Combine(filePath, Guid.NewGuid().ToString());
+            var action = () => Directory.CreateDirectory(directoryName);
+            action.Should().Throw<IOException>();
         }
 
         [Test]
         public void TestWriteDirectoryWithIncorrectName()
         {
+            var directoryName = Path.Combine(mountPoint, Guid.NewGuid().ToString() + ":::");
+            var action = () => Directory.CreateDirectory(directoryName);
+            action.Should().Throw<NotSupportedException>(); //TODO: fix
 
+            directoryName = Path.Combine(":" + mountPoint, Guid.NewGuid().ToString());
+            action.Should().Throw<ArgumentException>();
         }
 
         [Test]
@@ -51,7 +80,9 @@ namespace FileSystemTests
             Directory.CreateDirectory(Path.Combine(directoryName, directoryChild));
 
             var fileName = Guid.NewGuid().ToString();
-            File.Create(Path.Combine(directoryName, fileName));
+            var filePath = Path.Combine(directoryName, fileName);
+            using (File.Create(filePath)) {}
+            File.Exists(filePath).Should().BeTrue();
 
             var newDirectoryName = Path.Combine(mountPoint, Guid.NewGuid().ToString());
             Directory.Move(directoryName, newDirectoryName);
@@ -62,7 +93,7 @@ namespace FileSystemTests
             Directory.Exists(Path.Combine(directoryName, directoryChild)).Should().BeFalse();
             Directory.Exists(Path.Combine(newDirectoryName, directoryChild)).Should().BeTrue();
 
-            File.Exists(Path.Combine(directoryName, fileName)).Should().BeFalse();
+            File.Exists(filePath).Should().BeFalse();
             File.Exists(Path.Combine(newDirectoryName, fileName)).Should().BeTrue();
         }
 
@@ -75,7 +106,48 @@ namespace FileSystemTests
         [Test]
         public void TestDeleteDirectory()
         {
+            var directoryName = Path.Combine(mountPoint, Guid.NewGuid().ToString());
+            Directory.CreateDirectory(directoryName);
+            Directory.Exists(directoryName).Should().BeTrue();
 
+            Directory.Delete(directoryName);
+
+            Directory.Exists(directoryName).Should().BeFalse();
+        }
+
+        [Test]
+        public void TestFilesInDeletedDirectoryAreDeleted_WhenRecursive()
+        {
+            var directoryName = Path.Combine(mountPoint, Guid.NewGuid().ToString());
+            Directory.CreateDirectory(directoryName);
+
+            var fileName = Guid.NewGuid().ToString();
+            var filePath = Path.Combine(directoryName, fileName);
+            using (File.Create(filePath)) {}
+            File.Exists(filePath).Should().BeTrue();
+
+            Directory.Delete(directoryName, recursive: true);
+
+            File.Exists(filePath).Should().BeFalse();
+        }
+
+        [Test]
+        public void TestDeleteThrows_WhenDirectoryIsNotEmpty()
+        {
+            var directoryName = Path.Combine(mountPoint, Guid.NewGuid().ToString());
+            Directory.CreateDirectory(directoryName);
+
+            var fileName = Guid.NewGuid().ToString();
+            var filePath = Path.Combine(directoryName, fileName);
+            using (File.Create(filePath)) {}
+            File.Exists(filePath).Should().BeTrue();
+
+            File.Exists(filePath).Should().BeTrue();
+
+            var action = () => Directory.Delete(directoryName, recursive: false);
+            action.Should().Throw<IOException>();   //TODO: fix
+
+            File.Exists(filePath).Should().BeTrue();
         }
     }
 }
